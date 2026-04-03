@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import { HeatmapPoint } from './Model';
+import { ApiResponse, HeatmapPoint, RoutingRequest, RoutingResponseData, SafeShelterRequest, SafeShelterResponseData } from './Model';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
@@ -32,5 +32,52 @@ export const ApiClient = {
     }
   },
 
-  // --- SAU NÀY SẼ THÊM CÁC API KHÁC Ở ĐÂY ---
+  /**
+   * API gọi sang Spring Boot để AI dò tìm Top 3 điểm sơ tán
+   */
+  findSafeShelters: async (data: SafeShelterRequest): Promise<ApiResponse<SafeShelterResponseData>> => {
+      const response = await fetch(`${API_BASE_URL}/routing/find-safe-shelter`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+      });
+
+      // Đọc dữ liệu JSON trả về (cho dù là 200 OK hay 500 Error thì Spring Boot vẫn trả về JSON nhờ GlobalExceptionHandler)
+      let result: any;
+      try {
+          result = await response.json();
+      } catch (e) {
+          throw new Error(`Lỗi mạng hoặc Server sập: ${response.statusText}`);
+      }
+
+      if (!response.ok) {
+          // In toàn bộ cục lỗi ra F12 để chúng ta dễ bắt bệnh
+          console.error("Chi tiết lỗi từ Backend:", result);
+          // Lấy thêm trường result.error của Spring Boot mặc định
+          throw new Error(result.message || result.error || "Lỗi xử lý từ máy chủ AI."); 
+      }
+      return result;
+  },
+  getSafeRoute: async (data: RoutingRequest): Promise<ApiResponse<RoutingResponseData>> => {
+        const response = await fetch(`${API_BASE_URL}/routing/safe-route`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        let result: any;
+        try {
+            result = await response.json();
+        } catch (e) {
+            throw new Error(`Lỗi mạng hoặc Server sập: ${response.statusText}`);
+        }
+
+        if (!response.ok) {
+            throw new Error(result.message || result.error || "Lỗi xử lý AI khi tìm đường.");
+        }
+
+        return result;
+    },
 }

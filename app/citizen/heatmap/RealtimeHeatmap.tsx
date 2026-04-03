@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 // Import dynamic để chống lỗi "window is not defined" của Next.js
 import dynamic from 'next/dynamic';
-import HeatmapLayer from '@/components/HeatmapLayer';
+import HeatmapLayer from '@/components/ui/HeatmapLayer';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import 'leaflet/dist/leaflet.css';
