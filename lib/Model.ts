@@ -42,7 +42,29 @@ export interface SafeShelterResponseData {
     strategy_used: string;
     options: EvacuationOption[];
 }
-
+export interface SosRequest {
+    senderPhone: string;
+    message: string;
+    lat: number;
+    lng: number;
+}
+export interface LocationCheckRequest {
+    latitude: number;
+    longitude: number;
+    address?: string;
+}
+export interface LocationCheckResponse {
+    isSafe: boolean;
+    alertLevel: string; // SAFE, WARNING, DANGER
+    message: string;
+    floodRiskStatus: string;
+    landslideRiskStatus: string;
+    floodDepth: number;
+    aiLandslideProb: number;
+    buildingType: string;
+    distanceToWater: number;
+    currentElevation: number;
+}
 export interface ApiResponse<T> {
     code: number;
     status: string;

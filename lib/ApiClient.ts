@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import { ApiResponse, HeatmapPoint, RoutingRequest, RoutingResponseData, SafeShelterRequest, SafeShelterResponseData } from './Model';
+import { ApiResponse, HeatmapPoint, LocationCheckRequest, LocationCheckResponse, RoutingRequest, RoutingResponseData, SafeShelterRequest, SafeShelterResponseData, SosRequest } from './Model';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
@@ -78,6 +78,39 @@ export const ApiClient = {
             throw new Error(result.message || result.error || "Lỗi xử lý AI khi tìm đường.");
         }
 
+        return result;
+    },
+    /**
+     * API Gửi tín hiệu cấp cứu SOS
+     */
+    sendSosAlert: async (data: SosRequest): Promise<ApiResponse<string>> => {
+        const response = await fetch(`${API_BASE_URL}/sos/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        let result: any;
+        try {
+            result = await response.json();
+        } catch (e) {
+            throw new Error(`Lỗi mạng hoặc Server sập: ${response.statusText}`);
+        }
+
+        if (!response.ok) {
+            throw new Error(result.message || result.error || "Không thể gửi tín hiệu SOS. Vui lòng gọi điện trực tiếp!");
+        }
+
+        return result;
+    },
+    checkSafety: async (data: LocationCheckRequest): Promise<ApiResponse<LocationCheckResponse>> => {
+        const response = await fetch(`${API_BASE_URL}/safety/check`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Lỗi kiểm tra an toàn");
         return result;
     },
 }
