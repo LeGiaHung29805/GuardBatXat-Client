@@ -23,46 +23,130 @@ const axiosInstance = axios.create({
 });
 
 axiosInstance.interceptors.request.use((config) => {
+  // const token = localStorage.getItem('token');
+  // if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
+// TẬP HỢP TOÀN BỘ API CỦA HỆ THỐNG
 export const ApiClient = {
-  // --- HEATMAP ---
+  // --- API BẢN ĐỒ NHIỆT ---
   getInitialLandslideData: async (): Promise<HeatmapPoint[]> => {
-    const response = await axiosInstance.get("/map/heatmap/landslide");
-    return response.data;
+    try {
+      const response = await axiosInstance.get<HeatmapPoint[]>(
+        "/map/heatmap/landslide",
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi lấy dữ liệu Heatmap:", error);
+      throw error;
+    }
   },
 
-  // --- SAFE SHELTER ---
+  /**
+   * API gọi sang Spring Boot để AI dò tìm Top 3 điểm sơ tán
+   */
   findSafeShelters: async (
     data: SafeShelterRequest,
   ): Promise<ApiResponse<SafeShelterResponseData>> => {
-    const response = await axiosInstance.post(
-      "/routing/find-safe-shelter",
-      data,
-    );
-    return response.data;
+    const response = await fetch(`${API_BASE_URL}/routing/find-safe-shelter`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    let result: any;
+    try {
+      result = await response.json();
+    } catch (e) {
+      throw new Error(`Lỗi mạng hoặc Server sập: ${response.statusText}`);
+    }
+
+    if (!response.ok) {
+      console.error("Chi tiết lỗi từ Backend:", result);
+      throw new Error(
+        result.message || result.error || "Lỗi xử lý từ máy chủ AI.",
+      );
+    }
+    return result;
   },
 
-  // --- ROUTING ---
+  /**
+   * API Tìm đường đi an toàn
+   */
   getSafeRoute: async (
     data: RoutingRequest,
   ): Promise<ApiResponse<RoutingResponseData>> => {
-    const response = await axiosInstance.post("/routing/safety", data);
-    return response.data;
+    // Đã fix cứng URL chọc đúng vào API admin của Spring Boot
+    const response = await fetch(
+      "http://localhost:8080/api/admin/routing/safety",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      },
+    );
+
+    let result: any;
+    try {
+      result = await response.json();
+    } catch (e) {
+      throw new Error(`Lỗi mạng hoặc Server sập: ${response.statusText}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        result.message || result.error || "Lỗi xử lý AI khi tìm đường.",
+      );
+    }
+
+    return result;
   },
 
-  // --- SOS ---
+  /**
+   * API Gửi tín hiệu cấp cứu SOS
+   */
   sendSosAlert: async (data: SosRequest): Promise<ApiResponse<string>> => {
-    const response = await axiosInstance.post("/sos/send", data);
-    return response.data;
+    const response = await fetch(`${API_BASE_URL}/sos/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    let result: any;
+    try {
+      result = await response.json();
+    } catch (e) {
+      throw new Error(`Lỗi mạng hoặc Server sập: ${response.statusText}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        result.message ||
+          result.error ||
+          "Không thể gửi tín hiệu SOS. Vui lòng gọi điện trực tiếp!",
+      );
+    }
+
+    return result;
   },
 
-  // --- CHECK SAFETY ---
+  /**
+   * API Kiểm tra an toàn vị trí hiện tại
+   */
   checkSafety: async (
     data: LocationCheckRequest,
   ): Promise<ApiResponse<LocationCheckResponse>> => {
-    const response = await axiosInstance.post("/safety/check", data);
-    return response.data;
+    const response = await fetch(`${API_BASE_URL}/safety/check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "Lỗi kiểm tra an toàn");
+    return result;
   },
 };
