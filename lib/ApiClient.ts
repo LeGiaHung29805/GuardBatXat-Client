@@ -2,10 +2,13 @@ import axios from "axios";
 import {
   ApiResponse,
   HeatmapPoint,
+  LocationCheckRequest,
+  LocationCheckResponse,
   RoutingRequest,
   RoutingResponseData,
   SafeShelterRequest,
   SafeShelterResponseData,
+  SosRequest,
 } from "./Model";
 
 const API_BASE_URL =
@@ -20,83 +23,46 @@ const axiosInstance = axios.create({
 });
 
 axiosInstance.interceptors.request.use((config) => {
-  // const token = localStorage.getItem('token');
-  // if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// TẬP HỢP TOÀN BỘ API CỦA HỆ THỐNG
 export const ApiClient = {
-  // --- API BẢN ĐỒ NHIỆT ---
+  // --- HEATMAP ---
   getInitialLandslideData: async (): Promise<HeatmapPoint[]> => {
-    try {
-      const response = await axiosInstance.get<HeatmapPoint[]>(
-        "/map/heatmap/landslide",
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Lỗi lấy dữ liệu Heatmap:", error);
-      throw error;
-    }
+    const response = await axiosInstance.get("/map/heatmap/landslide");
+    return response.data;
   },
 
-  /**
-   * API gọi sang Spring Boot để AI dò tìm Top 3 điểm sơ tán
-   */
+  // --- SAFE SHELTER ---
   findSafeShelters: async (
     data: SafeShelterRequest,
   ): Promise<ApiResponse<SafeShelterResponseData>> => {
-    const response = await fetch(`${API_BASE_URL}/routing/find-safe-shelter`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-
-    // Đọc dữ liệu JSON trả về (cho dù là 200 OK hay 500 Error thì Spring Boot vẫn trả về JSON nhờ GlobalExceptionHandler)
-    let result: any;
-    try {
-      result = await response.json();
-    } catch (e) {
-      throw new Error(`Lỗi mạng hoặc Server sập: ${response.statusText}`);
-    }
-
-    if (!response.ok) {
-      // In toàn bộ cục lỗi ra F12 để chúng ta dễ bắt bệnh
-      console.error("Chi tiết lỗi từ Backend:", result);
-      // Lấy thêm trường result.error của Spring Boot mặc định
-      throw new Error(
-        result.message || result.error || "Lỗi xử lý từ máy chủ AI.",
-      );
-    }
-    return result;
+    const response = await axiosInstance.post(
+      "/routing/find-safe-shelter",
+      data,
+    );
+    return response.data;
   },
+
+  // --- ROUTING ---
   getSafeRoute: async (
     data: RoutingRequest,
   ): Promise<ApiResponse<RoutingResponseData>> => {
-    const response = await fetch(
-      "http://localhost:8080/api/admin/routing/safety",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      },
-    );
+    const response = await axiosInstance.post("/routing/safety", data);
+    return response.data;
+  },
 
-    let result: any;
-    try {
-      result = await response.json();
-    } catch (e) {
-      throw new Error(`Lỗi mạng hoặc Server sập: ${response.statusText}`);
-    }
+  // --- SOS ---
+  sendSosAlert: async (data: SosRequest): Promise<ApiResponse<string>> => {
+    const response = await axiosInstance.post("/sos/send", data);
+    return response.data;
+  },
 
-    if (!response.ok) {
-      throw new Error(
-        result.message || result.error || "Lỗi xử lý AI khi tìm đường.",
-      );
-    }
-
-    return result;
+  // --- CHECK SAFETY ---
+  checkSafety: async (
+    data: LocationCheckRequest,
+  ): Promise<ApiResponse<LocationCheckResponse>> => {
+    const response = await axiosInstance.post("/safety/check", data);
+    return response.data;
   },
 };

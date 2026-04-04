@@ -26,7 +26,7 @@ export default function BatXatBoundaryMap({ children }: { children?: React.React
 
     // Load file GeoJSON tĩnh từ thư mục public/data/
     useEffect(() => {
-        fetch('/data/batxat_boundary.json')
+        fetch('/data/batxat_boundary1.json')
             .then(res => res.json())
             .then(data => setBoundaryData(data))
             .catch(err => console.error("Không thể tải file ranh giới:", err));
@@ -57,6 +57,7 @@ export default function BatXatBoundaryMap({ children }: { children?: React.React
             {/* VẼ RANH GIỚI GEOJSON (SHAPEFILE) */}
             {boundaryData && (
                 <GeoJSON
+                    key={Math.random()}
                     data={boundaryData}
                     style={boundaryStyle}
                 />
