@@ -27,25 +27,8 @@ export default function SafeRoutingPage() {
   // }, []);
   // Lấy GPS thật của trình duyệt khi vừa vào trang
   useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // Lấy thành công tọa độ từ Chrome
-          setStartLoc({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error("Lỗi lấy vị trí GPS:", error);
-          alert("Vui lòng cho phép trình duyệt truy cập vị trí!");
-          // Nếu lỗi, gán tạm tọa độ mặc định để không bị lỗi màn hình
-          setStartLoc({ lat: 22.6105, lng: 103.8012 });
-        },
-      );
-    } else {
-      alert("Trình duyệt của bạn không hỗ trợ định vị GPS.");
-    }
+    // Ép cứng vị trí tại Bát Xát, bỏ qua hoàn toàn việc check GPS của trình duyệt
+    setStartLoc({ lat: 22.6105, lng: 103.8012 });
   }, []);
 
   const handleFindRoute = async () => {
