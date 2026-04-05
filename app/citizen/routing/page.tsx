@@ -49,13 +49,24 @@ export default function SafeRoutingPage() {
         endLng: destLoc.lng,
       });
 
-      if (res.code === 200 && res.data.route_coordinates) {
-        setRoute(res.data.route_coordinates);
-        setMessage("Đã tìm thấy lộ trình an toàn nhất né vùng thiên tai!");
+      // LỖI: res.data.route_coordinates không tồn tại trong JSON mới của Backend
+      // SỬA THÀNH: res.data.pathPoints
+      if (res.code === 200 && res.data.pathPoints) {
+        setRoute(res.data.pathPoints);
+
+        // Bạn có thể lấy thêm thông tin khoảng cách để hiển thị cho người dân
+        const dist = (res.data.totalDistance / 1000).toFixed(2);
+        setMessage(
+          `Đã tìm thấy lộ trình an toàn nhất (Dài: ${dist} km). Hãy di chuyển theo đường chỉ dẫn!`,
+        );
+      } else {
+        setMessage(
+          "Không tìm thấy lộ trình an toàn. Khu vực có thể bị chia cắt.",
+        );
       }
     } catch (error: any) {
       console.error("Lỗi:", error);
-      setMessage(error.message || "Không thể tìm đường đến vị trí này.");
+      setMessage(error.message || "Hệ thống AI đang bận hoặc gặp lỗi kết nối.");
     } finally {
       setLoading(false);
     }
