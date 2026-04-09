@@ -1,4 +1,5 @@
 "use client";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useState, useEffect, useMemo } from "react";
 import { ApiClient } from "@/lib/ApiClient";
 import {
@@ -15,7 +16,7 @@ export default function AdminRoadsPage() {
   const [roads, setRoads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20; // Render đúng 50 dòng để nhẹ DOM
 
@@ -48,9 +49,9 @@ export default function AdminRoadsPage() {
   // TỐI ƯU HÓA CỰC ĐẠI: Cắt đứt vòng lặp nếu không gõ tìm kiếm
   const filteredRoads = useMemo(() => {
     // Nếu không có từ khóa, trả về thẳng mảng gốc. Tránh việc duyệt qua hàng vạn phần tử!
-    if (!searchTerm || !searchTerm.trim()) return roads;
+    if (!debouncedSearchTerm || !debouncedSearchTerm.trim()) return roads;
 
-    const term = searchTerm.toLowerCase().trim();
+    const term = debouncedSearchTerm.toLowerCase().trim();
     return roads.filter(
       (r: any) =>
         r.id?.toString().includes(term) ||
@@ -58,7 +59,7 @@ export default function AdminRoadsPage() {
         r.u?.toString().includes(term) ||
         r.v?.toString().includes(term),
     );
-  }, [roads, searchTerm]);
+  }, [roads, debouncedSearchTerm]);
 
   // LOGIC PHÂN TRANG
   const totalPages = Math.ceil(filteredRoads.length / itemsPerPage);

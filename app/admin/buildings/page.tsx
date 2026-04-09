@@ -1,4 +1,5 @@
 "use client";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useState, useEffect, useMemo } from "react";
 import { ApiClient } from "@/lib/ApiClient";
 import {
@@ -14,6 +15,7 @@ export default function AdminBuildingsPage() {
   const [buildings, setBuildings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // --- STATE PHÂN TRANG ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,15 +49,15 @@ export default function AdminBuildingsPage() {
 
   // --- TỐI ƯU TÌM KIẾM CỰC ĐẠI ---
   const filteredBuildings = useMemo(() => {
-    if (!searchTerm || !searchTerm.trim()) return buildings; // Ngắt vòng lặp nếu ô tìm kiếm rỗng
+    if (!debouncedSearchTerm || !debouncedSearchTerm.trim()) return buildings; // Ngắt vòng lặp nếu ô tìm kiếm rỗng
 
-    const term = searchTerm.toLowerCase().trim();
+    const term = debouncedSearchTerm.toLowerCase().trim();
     return buildings.filter(
       (b: any) =>
         b.id?.toString().includes(term) ||
         (b.buildingType || b.buildingtype || "")?.toLowerCase().includes(term),
     );
-  }, [buildings, searchTerm]);
+  }, [buildings, debouncedSearchTerm]);
 
   // --- LOGIC CẮT TRANG ---
   const totalPages = Math.ceil(filteredBuildings.length / itemsPerPage);
