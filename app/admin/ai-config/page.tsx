@@ -21,7 +21,7 @@ export default function AdminAiConfigPage() {
       // Truyền biến strategy linh hoạt thay vì hardcode "rescue"
       await ApiClient.updateAHPWeights(strategy, weights);
       alert(
-        `✅ Não bộ AI (chiến lược ${strategy}) đã được cập nhật thành công xuống PostGIS!`,
+        ` Não bộ AI (chiến lược ${strategy}) đã được cập nhật thành công xuống PostGIS!`,
       );
     } catch (e) {
       alert("Lỗi kết nối Backend!");
