@@ -1,206 +1,249 @@
 import axios from "axios";
+import {
+  ApiResponse,
+  HeatmapPoint,
+  LocationCheckRequest,
+  LocationCheckResponse,
+  RoutingRequest,
+  RoutingResponseData,
+  SafeShelterRequest,
+  SafeShelterResponseData,
+  SosRequest,
+  FieldUpdateData,
+} from "./Model";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-const API_V1 = `${API_BASE_URL}/api/v1`;
-const API_ADMIN = `${API_BASE_URL}/api/admin`;
+// Gốc của API thiết lập về /api
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true" || true;
 
+// Khởi tạo 1 Axios Instance duy nhất
 const axiosInstance = axios.create({
-  baseURL: API_V1,
-  timeout: 10000,
-  headers: { "Content-Type": "application/json" },
+  baseURL: API_BASE_URL,
+  timeout: 60000,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-const getAuthHeaders = () => {
-  const headers: any = { "Content-Type": "application/json" };
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
-    if (token && token !== "null" && token.trim() !== "") {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+// Hàm nạp token trực tiếp vào Header để dùng ngay sau khi đăng nhập
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    axiosInstance.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete axiosInstance.defaults.headers.common["Authorization"];
   }
-  return headers;
 };
 
+// Interceptor: Tự động gắn token vào MỌI request
+axiosInstance.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token =
+      localStorage.getItem("jwt_token") || localStorage.getItem("token");
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+// Interceptor: Xử lý khi Token hết hạn (401, 403)
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error.response &&
+      (error.response.status === 401 || error.response.status === 403)
+    ) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("jwt_token");
+        localStorage.removeItem("token");
+        setAuthToken(null);
+
+        // Chuyển hướng về trang đăng nhập nếu cần
+        if (window.location.pathname !== "/auth") {
+          // window.location.href = '/auth';
+        }
+      }
+    }
+    const errorMessage = error.response?.data?.message || "Lỗi kết nối máy chủ";
+    return Promise.reject(new Error(errorMessage));
+  },
+);
+
 export const ApiClient = {
-  // --- AUTH ---
-  login: async (credentials: any) => {
-    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(credentials),
-    });
-    return res.json();
+  // ==========================================
+  // --- API XÁC THỰC (AUTH) ---
+  // ==========================================
+  login: async (data: any): Promise<ApiResponse<string>> => {
+    const response = await axiosInstance.post("/v1/auth/login", data);
+    return response.data;
+  },
+  register: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.post("/v1/auth/register", data);
+    return response.data;
   },
 
-  // --- ADMIN USERS ---
-  getAdminUsers: async () => {
-    const res = await fetch(`${API_ADMIN}/users`, {
-      headers: getAuthHeaders(),
-    });
-    return res.json();
+  // ==========================================
+  // --- API QUẢN LÝ TÀI KHOẢN & HỒ SƠ ---
+  // ==========================================
+  getMyProfile: async (): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.get("/v1/users/me");
+    return response.data;
   },
-  createUser: async (userData: any) => {
-    const res = await fetch(`${API_ADMIN}/users`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(userData),
-    });
-    return res.json();
+  getMySurvivalProfile: async (): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.get("/v1/users/me/profile");
+    return response.data;
   },
-  updateUser: async (id: number, userData: any) => {
-    const res = await fetch(`${API_ADMIN}/users/${id}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(userData),
-    });
-    return res.json();
+  updateMyProfile: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.put("/v1/users/me", data);
+    return response.data;
   },
-  toggleUserStatus: async (id: number) => {
-    const res = await fetch(`${API_ADMIN}/users/${id}/toggle-status`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-    });
-    return res.json();
-  },
-  deleteUser: async (id: number) => {
-    const res = await fetch(`${API_ADMIN}/users/${id}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
-    return res.json();
+  updateMySurvivalProfile: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.put("/v1/users/me/profile", data);
+    return response.data;
   },
 
-  // --- ADMIN SPATIAL (Hạ tầng) ---
-  getAdminBuildings: async () => {
-    const res = await fetch(`${API_ADMIN}/spatial/buildings`, {
-      headers: getAuthHeaders(),
-    });
-    return res.json();
-  },
-  getAdminRoads: async () => {
-    const res = await fetch(`${API_ADMIN}/spatial/roads`, {
-      headers: getAuthHeaders(),
-    });
-    return res.json();
-  },
-  createBuilding: async (data: any) => {
-    const res = await fetch(`${API_ADMIN}/spatial/buildings`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    return res.json();
-  },
-  updateBuilding: async (id: number, data: any) => {
-    const res = await fetch(`${API_ADMIN}/spatial/buildings/${id}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    return res.json();
-  },
-  deleteBuilding: async (id: number) => {
-    const res = await fetch(`${API_ADMIN}/spatial/buildings/${id}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
-    return res.json();
-  },
-  createRoad: async (data: any) => {
-    const res = await fetch(`${API_ADMIN}/spatial/roads`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    return res.json();
-  },
-
-  // --- ADMIN AI & SIMULATION ---
-  updateAHPWeights: async (strategyName: string, weights: any) => {
-    const res = await fetch(`${API_ADMIN}/system/weights/${strategyName}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(weights),
-    });
-    return res.json();
-  },
-  getSystemModels: async () => {
-    const res = await fetch(`${API_ADMIN}/system/models`, {
-      headers: getAuthHeaders(),
-    });
-    return res.json();
-  },
-  activateModel: async (id: number) => {
-    const res = await fetch(`${API_ADMIN}/system/models/${id}/activate`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-    });
-    return res.json();
-  },
-  runFloodSimulation: async (waterLevel: number) => {
-    const res = await fetch(`${API_ADMIN}/simulation/flood`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ waterLevel }),
-    });
-    return res.json();
-  },
-  getSimulationStats: async (simulationId: string) => {
-    const res = await fetch(
-      `${API_ADMIN}/simulation/flood/${simulationId}/stats`,
-      { headers: getAuthHeaders() },
-    );
-    return res.json();
-  },
-
+  // ==========================================
   // --- CITIZEN & PUBLIC ---
-  getInitialLandslideData: async () => {
-    const res = await axiosInstance.get("/map/heatmap/landslide");
-    return res.data;
+  // ==========================================
+  getInitialLandslideData: async (): Promise<HeatmapPoint[]> => {
+    const response = await axiosInstance.get("/v1/map/heatmap/landslide");
+    return response.data;
   },
-  checkSafety: async (data: any) => {
-    const res = await axiosInstance.post("/safety/check", data);
-    return res.data;
+  checkSafety: async (
+    data: LocationCheckRequest,
+  ): Promise<ApiResponse<LocationCheckResponse>> => {
+    const response = await axiosInstance.post("/v1/safety/check", data);
+    return response.data;
   },
-  getSafeRoute: async (data: any) => {
-    // Trỏ đúng vào API Routing theo hợp đồng mới
-    const res = await fetch(`${API_ADMIN}/routing/safety`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    return res.json();
+  getSafeRoute: async (
+    data: RoutingRequest,
+  ): Promise<ApiResponse<RoutingResponseData>> => {
+    const response = await axiosInstance.post("/v1/routing/safe-route", data);
+    return response.data;
   },
-  findSafeShelters: async (data: any) => {
-    const res = await fetch(`${API_ADMIN}/routing/find-safe-shelter`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    return res.json();
-  },
-  sendSosAlert: async (data: any) => {
-    const res = await axiosInstance.post("/sos/send", data);
-    return res.data;
-  },
-  getEvacuationRoute: async (data: any) => {
-    const res = await axiosInstance.post("/map/evacuation-route", data);
-    return res.data;
-  },
-  triggerBroadcast: async (data: any) => {
-    const res = await axiosInstance.post(
-      "/map/internal/trigger-broadcast",
+  findSafeShelters: async (
+    data: SafeShelterRequest,
+  ): Promise<ApiResponse<SafeShelterResponseData>> => {
+    const response = await axiosInstance.post(
+      "/v1/routing/find-safe-shelter",
       data,
     );
-    return res.data;
+    return response.data;
   },
-  // Gọi API so sánh 3 đường của Admin
-  getAdminCompareRoute: async (payload: any) => {
-    const res = await fetch(`${API_ADMIN}/routing/compare`, {
-      method: "POST",
-      headers: getAuthHeaders(), // Nhớ truyền header để Spring Security cho qua
-      body: JSON.stringify(payload),
+  sendSosAlert: async (data: SosRequest): Promise<ApiResponse<string>> => {
+    const response = await axiosInstance.post("/v1/sos/send", data);
+    return response.data;
+  },
+  getEvacuationRoute: async (data: any) => {
+    const response = await axiosInstance.post("/v1/map/evacuation-route", data);
+    return response.data;
+  },
+  triggerBroadcast: async (data: any) => {
+    const response = await axiosInstance.post(
+      "/v1/map/internal/trigger-broadcast",
+      data,
+    );
+    return response.data;
+  },
+
+  // ==========================================
+  // --- ADMIN USERS ---
+  // ==========================================
+  getAdminUsers: async () => {
+    const response = await axiosInstance.get("/admin/users");
+    return response.data;
+  },
+  createUser: async (userData: any) => {
+    const response = await axiosInstance.post("/admin/users", userData);
+    return response.data;
+  },
+  updateUser: async (id: number, userData: any) => {
+    const response = await axiosInstance.put(`/admin/users/${id}`, userData);
+    return response.data;
+  },
+  toggleUserStatus: async (id: number) => {
+    const response = await axiosInstance.put(
+      `/admin/users/${id}/toggle-status`,
+    );
+    return response.data;
+  },
+  deleteUser: async (id: number) => {
+    const response = await axiosInstance.delete(`/admin/users/${id}`);
+    return response.data;
+  },
+
+  // ==========================================
+  // --- ADMIN SPATIAL (Hạ tầng) ---
+  // ==========================================
+  getAdminBuildings: async () => {
+    const response = await axiosInstance.get("/admin/spatial/buildings");
+    return response.data;
+  },
+  getAdminRoads: async () => {
+    const response = await axiosInstance.get("/admin/spatial/roads");
+    return response.data;
+  },
+  createBuilding: async (data: any) => {
+    const response = await axiosInstance.post("/admin/spatial/buildings", data);
+    return response.data;
+  },
+  updateBuilding: async (id: number, data: any) => {
+    const response = await axiosInstance.put(
+      `/admin/spatial/buildings/${id}`,
+      data,
+    );
+    return response.data;
+  },
+  deleteBuilding: async (id: number) => {
+    const response = await axiosInstance.delete(
+      `/admin/spatial/buildings/${id}`,
+    );
+    return response.data;
+  },
+  createRoad: async (data: any) => {
+    const response = await axiosInstance.post("/admin/spatial/roads", data);
+    return response.data;
+  },
+
+  // ==========================================
+  // --- ADMIN AI, SIMULATION & ROUTING ---
+  // ==========================================
+  updateAHPWeights: async (strategyName: string, weights: any) => {
+    const response = await axiosInstance.put(
+      `/admin/system/weights/${strategyName}`,
+      weights,
+    );
+    return response.data;
+  },
+  getSystemModels: async () => {
+    const response = await axiosInstance.get("/admin/system/models");
+    return response.data;
+  },
+  activateModel: async (id: number) => {
+    const response = await axiosInstance.put(
+      `/admin/system/models/${id}/activate`,
+    );
+    return response.data;
+  },
+  runFloodSimulation: async (waterLevel: number) => {
+    const response = await axiosInstance.post("/admin/simulation/flood", {
+      waterLevel,
     });
-    return res.json();
+    return response.data;
+  },
+  getSimulationStats: async (simulationId: string) => {
+    const response = await axiosInstance.get(
+      `/admin/simulation/flood/${simulationId}/stats`,
+    );
+    return response.data;
+  },
+  getAdminCompareRoute: async (payload: any) => {
+    const response = await axiosInstance.post(
+      "/admin/routing/compare",
+      payload,
+    );
+    return response.data;
   },
 };

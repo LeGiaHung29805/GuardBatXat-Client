@@ -20,15 +20,31 @@ export default function SafeRoutingPage() {
   const [route, setRoute] = useState<[number, number][]>([]);
   const [message, setMessage] = useState<string>("");
 
-  // // Lấy GPS khi vừa vào trang
-  // useEffect(() => {
-  //     // TỌA ĐỘ MOCK ĐỂ TEST TRÊN MÁY TÍNH (Bạn có thể đổi sang navigator.geolocation sau)
-  //     setStartLoc({ lat: 22.6105, lng: 103.8012 });
-  // }, []);
-  // Lấy GPS thật của trình duyệt khi vừa vào trang
   useEffect(() => {
-    // Ép cứng vị trí tại Bát Xát, bỏ qua hoàn toàn việc check GPS của trình duyệt
-    setStartLoc({ lat: 22.6105, lng: 103.8012 });
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // Cập nhật state với tọa độ thật
+          setStartLoc({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Lỗi lấy vị trí GPS:", error);
+          alert(
+            "Không thể tự động lấy vị trí của bạn. Vui lòng cấp quyền truy cập vị trí trên trình duyệt!",
+          );
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        },
+      );
+    } else {
+      alert("Trình duyệt hoặc thiết bị của bạn không hỗ trợ định vị GPS.");
+    }
   }, []);
 
   const handleFindRoute = async () => {
@@ -49,24 +65,13 @@ export default function SafeRoutingPage() {
         endLng: destLoc.lng,
       });
 
-      // LỖI: res.data.route_coordinates không tồn tại trong JSON mới của Backend
-      // SỬA THÀNH: res.data.pathPoints
-      if (res.code === 200 && res.data.pathPoints) {
-        setRoute(res.data.pathPoints);
-
-        // Bạn có thể lấy thêm thông tin khoảng cách để hiển thị cho người dân
-        const dist = (res.data.totalDistance / 1000).toFixed(2);
-        setMessage(
-          `Đã tìm thấy lộ trình an toàn nhất (Dài: ${dist} km). Hãy di chuyển theo đường chỉ dẫn!`,
-        );
-      } else {
-        setMessage(
-          "Không tìm thấy lộ trình an toàn. Khu vực có thể bị chia cắt.",
-        );
+      if (res.code === 200 && res.data.route_coordinates) {
+        setRoute(res.data.route_coordinates);
+        setMessage("Đã tìm thấy lộ trình an toàn nhất né vùng thiên tai!");
       }
     } catch (error: any) {
       console.error("Lỗi:", error);
-      setMessage(error.message || "Hệ thống AI đang bận hoặc gặp lỗi kết nối.");
+      setMessage(error.message || "Không thể tìm đường đến vị trí này.");
     } finally {
       setLoading(false);
     }

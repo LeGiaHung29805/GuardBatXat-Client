@@ -13,22 +13,32 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect } from "react";
 
-// Icon Điểm A (Vị trí của bạn - Màu xanh)
+// Icon Điểm A (Vị trí của bạn - Màu xanh dương)
 const startIcon = L.divIcon({
-  className: "bg-transparent",
-  html: `<div class="w-5 h-5 bg-blue-600 rounded-full border-4 border-white shadow-xl"></div>`,
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
-});
-
-// Icon Điểm B (Đích đến - Màu tím có chấm)
-const endIcon = L.divIcon({
-  className: "bg-transparent",
-  html: `<div class="w-6 h-6 bg-purple-600 rounded-full border-4 border-white shadow-xl flex items-center justify-center">
-             <div class="w-2 h-2 bg-white rounded-full animate-ping"></div>
-           </div>`,
+  className: "bg-transparent border-none",
+  html: `
+        <div class="relative flex h-6 w-6 items-center justify-center">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-600 border-2 border-white shadow-md"></span>
+        </div>
+    `,
   iconSize: [24, 24],
   iconAnchor: [12, 12],
+  popupAnchor: [0, -12],
+});
+
+// Icon Điểm B (Đích đến - Màu tím)
+const endIcon = L.divIcon({
+  className: "bg-transparent border-none",
+  html: `
+        <div class="relative flex h-6 w-6 items-center justify-center">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-4 w-4 bg-purple-600 border-2 border-white shadow-md"></span>
+        </div>
+    `,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+  popupAnchor: [0, -12],
 });
 
 // Component điều khiển Camera zoom vừa khít đường đi
@@ -51,7 +61,6 @@ function RouteController({
   return null;
 }
 
-// Component Bắt sự kiện Click trên bản đồ để cắm cờ
 function ClickHandler({
   setDestination,
 }: {
@@ -100,14 +109,40 @@ export default function SafeRouteMap({
         </Marker>
       )}
 
-      {/* Tuyến đường AI vẽ */}
       {routeCoords && routeCoords.length > 0 && (
-        <Polyline
-          positions={routeCoords}
-          color="#fde047" // Vàng nổi bật
-          weight={6}
-          opacity={0.9}
-        />
+        <>
+          {startLoc && (
+            <Polyline
+              positions={[[startLoc.lat, startLoc.lng], routeCoords[0]]}
+              color="#fde047" // Màu vàng đồng bộ
+              weight={4}
+              dashArray="8, 8" // Tạo nét đứt
+              opacity={0.8}
+            />
+          )}
+
+          <Polyline
+            positions={routeCoords}
+            color="#fde047" // Vàng nổi bật
+            weight={6}
+            opacity={0.9}
+            lineCap="round"
+            lineJoin="round"
+          />
+
+          {destLoc && (
+            <Polyline
+              positions={[
+                routeCoords[routeCoords.length - 1],
+                [destLoc.lat, destLoc.lng],
+              ]}
+              color="#fde047" // Màu vàng đồng bộ
+              weight={4}
+              dashArray="8, 8" // Tạo nét đứt
+              opacity={0.8}
+            />
+          )}
+        </>
       )}
     </MapContainer>
   );

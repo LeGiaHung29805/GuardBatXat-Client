@@ -22,7 +22,7 @@ export default function CitizenDashboardPage() {
                     <Link href="/citizen/evacuation" className="group">
                         <div className="bg-white p-8 rounded-2xl shadow-md border-b-4 border-red-500 hover:shadow-xl hover:-translate-y-1 transition-all h-full">
                             <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <span className="text-red-600 text-2xl">🏃</span>
+                                <span className="text-red-600 text-2xl"></span>
                             </div>
                             <h2 className="text-xl font-bold text-gray-800 mb-2">Tìm Điểm Sơ Tán</h2>
                             <p className="text-gray-500 text-sm">
@@ -31,11 +31,10 @@ export default function CitizenDashboardPage() {
                         </div>
                     </Link>
 
-                    {/* Thẻ 2: Lộ trình an toàn */}
                     <Link href="/citizen/routing" className="group">
                         <div className="bg-white p-8 rounded-2xl shadow-md border-b-4 border-blue-500 hover:shadow-xl hover:-translate-y-1 transition-all h-full">
                             <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                <span className="text-blue-600 text-2xl">🗺️</span>
+                                <span className="text-blue-600 text-2xl"></span>
                             </div>
                             <h2 className="text-xl font-bold text-gray-800 mb-2">Định Vị An Toàn</h2>
                             <p className="text-gray-500 text-sm">
@@ -44,7 +43,6 @@ export default function CitizenDashboardPage() {
                         </div>
                     </Link>
 
-                    {/* Thẻ 3: Bản đồ nhiệt */}
                     <Link href="/citizen/heatmap" className="group">
                         <div className="bg-white p-8 rounded-2xl shadow-md border-b-4 border-amber-500 hover:shadow-xl hover:-translate-y-1 transition-all h-full">
                             <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
