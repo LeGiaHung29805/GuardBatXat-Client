@@ -29,7 +29,7 @@ export function toHeatmapObject(point: HeatmapPointArray): HeatmapPointObject {
     lat: point[0],
     lng: point[1],
     weight: point[2],
-    severity: point[2] > 0.8 ? 'high' : point[2] > 0.5 ? 'medium' : 'low'
+    severity: point[2] > 0.8 ? "high" : point[2] > 0.5 ? "medium" : "low",
   };
 }
 
@@ -70,6 +70,7 @@ export interface RoutingRequest {
 }
 
 export interface RoutingResponseData {
+  pathPoints: boolean;
   status: string;
   message: string;
   route_coordinates: [number, number][];
@@ -116,7 +117,7 @@ export interface ApiResponse<T> {
 /**
  * Trạng thái của nhiệm vụ cứu hộ
  */
-export type MissionStatus = 'en_route' | 'arrived' | 'rescuing' | 'completed';
+export type MissionStatus = "en_route" | "arrived" | "rescuing" | "completed";
 
 /**
  * Dữ liệu cập nhật hiện trường
@@ -148,17 +149,17 @@ export interface SendFieldUpdateRequest {
   lng?: number;
 }
 export interface LocationCheckResponse {
-    isSafe: boolean;
-    alertLevel: string; // SAFE, WARNING, DANGER
-    message: string;
-    floodRiskStatus: string;
-    landslideRiskStatus: string;
-    floodDepth: number;
-    aiLandslideProb: number;
-    aiFloodProb: number;
-    buildingType: string;
-    distanceToWater: number;
-    currentElevation: number;
+  isSafe: boolean;
+  alertLevel: string; // SAFE, WARNING, DANGER
+  message: string;
+  floodRiskStatus: string;
+  landslideRiskStatus: string;
+  floodDepth: number;
+  aiLandslideProb: number;
+  aiFloodProb: number;
+  buildingType: string;
+  distanceToWater: number;
+  currentElevation: number;
 }
 
 /**
@@ -218,10 +219,10 @@ export interface RescueTeamStats {
  */
 export function getMissionStatusLabel(status: MissionStatus): string {
   const labels: Record<MissionStatus, string> = {
-    en_route: 'Đang di chuyển',
-    arrived: 'Đã đến hiện trường',
-    rescuing: 'Đang cứu hộ',
-    completed: 'Hoàn thành',
+    en_route: "Đang di chuyển",
+    arrived: "Đã đến hiện trường",
+    rescuing: "Đang cứu hộ",
+    completed: "Hoàn thành",
   };
   return labels[status];
 }
@@ -231,10 +232,10 @@ export function getMissionStatusLabel(status: MissionStatus): string {
  */
 export function getMissionStatusColor(status: MissionStatus): string {
   const colors: Record<MissionStatus, string> = {
-    en_route: 'bg-blue-100 text-blue-700',
-    arrived: 'bg-green-100 text-green-700',
-    rescuing: 'bg-orange-100 text-orange-700',
-    completed: 'bg-emerald-100 text-emerald-700',
+    en_route: "bg-blue-100 text-blue-700",
+    arrived: "bg-green-100 text-green-700",
+    rescuing: "bg-orange-100 text-orange-700",
+    completed: "bg-emerald-100 text-emerald-700",
   };
   return colors[status];
 }
@@ -244,10 +245,10 @@ export function getMissionStatusColor(status: MissionStatus): string {
  */
 export function getMissionStatusIcon(status: MissionStatus): string {
   const icons: Record<MissionStatus, string> = {
-    en_route: '🚑',
-    arrived: '📍',
-    rescuing: '🆘',
-    completed: '✅',
+    en_route: "🚑",
+    arrived: "📍",
+    rescuing: "🆘",
+    completed: "✅",
   };
   return icons[status];
 }
