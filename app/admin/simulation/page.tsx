@@ -43,7 +43,7 @@ export default function SimulationPage() {
   }, [simData]);
 
   // Màu sắc cho biểu đồ
-  const COLORS = ["#ef4444", "#f97316", "#eab308", "#3b82f6", "#8b5cf6"];
+  const COLORS = ["#bdca06", "#013ff8", "#ea0808", "#f89d00", "#8b5cf6"];
 
   const totalPages = Math.ceil(simData.length / itemsPerPage);
 
@@ -136,8 +136,12 @@ export default function SimulationPage() {
                 <BarChart3 size={16} className="text-blue-500" /> Phân bổ mức độ
                 rủi ro
               </h4>
-              <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div
+                className="w-full relative"
+                style={{ height: 250, minHeight: 250 }}
+              >
+                {/* 2. ResponsiveContainer có thể để width="100%" height="100%" nhưng tốt nhất là gán thẳng chiều cao nếu container thỉnh thoảng bị lỗi DOM */}
+                <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
                       data={chartData}
