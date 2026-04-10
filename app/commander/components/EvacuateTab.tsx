@@ -1,0 +1,146 @@
+import React from "react";
+import type { ScenarioLevel, DamageStats } from "../types";
+import { 
+  Siren, 
+  Home, 
+  Users, 
+  Map as MapIcon, // Đổi tên để tránh trùng lặp nếu có dùng Map của Leaflet sau này
+  Construction, 
+  ClipboardList,
+  BellRing
+} from "lucide-react"; // Import thư viện Icon
+
+interface Props {
+  selectedScenario: ScenarioLevel;
+  damageStats: DamageStats;
+  onActivate: () => void;
+}
+
+export default function EvacuateTab({
+  selectedScenario,
+  damageStats,
+  onActivate,
+}: Props) {
+  return (
+    <div className="space-y-6">
+      {/* TIÊU ĐỀ CHÍNH */}
+      <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
+        <Siren size={32} className="text-red-500 animate-pulse" />
+        Kích hoạt Kịch bản Sơ tán
+      </h2>
+
+      {/* KHUNG KÍCH HOẠT LỆNH SƠ TÁN */}
+      <div className="bg-gradient-to-br from-red-900/50 to-orange-900/50 backdrop-blur-md rounded-2xl p-8 border-2 border-red-500">
+        <div className="flex items-center mb-6">
+          <div className="bg-red-600 p-4 rounded-full mr-4 shadow-lg shadow-red-500/30">
+            <BellRing size={40} className="text-white" /> {/* Thay thế SVG cũ bằng Icon */}
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold">
+              Kịch bản đang chọn: <span className="text-red-400">{selectedScenario}</span>
+            </h3>
+            <p className="text-gray-300">
+              Dự kiến ảnh hưởng{" "}
+              <span className="font-bold text-white">{damageStats.populationEvacuated.toLocaleString()}</span> người
+            </p>
+          </div>
+        </div>
+
+        {/* 4 Ô THỐNG KÊ CHI TIẾT */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gray-800/80 p-4 rounded-xl text-center flex flex-col items-center justify-center border border-gray-700">
+            <Home size={32} className="mb-2 text-blue-400" />
+            <div className="text-2xl font-bold">{damageStats.housesFlooded}</div>
+            <div className="text-sm text-gray-400">Nhà bị ngập</div>
+          </div>
+          <div className="bg-gray-800/80 p-4 rounded-xl text-center flex flex-col items-center justify-center border border-gray-700">
+            <Users size={32} className="mb-2 text-purple-400" />
+            <div className="text-2xl font-bold text-red-400">
+              {damageStats.populationEvacuated.toLocaleString()}
+            </div>
+            <div className="text-sm text-gray-400">Người cần sơ tán</div>
+          </div>
+          <div className="bg-gray-800/80 p-4 rounded-xl text-center flex flex-col items-center justify-center border border-gray-700">
+            <MapIcon size={32} className="mb-2 text-green-400" />
+            <div className="text-2xl font-bold">
+              {damageStats.areaAffected} m²
+            </div>
+            <div className="text-sm text-gray-400">Diện tích ngập</div>
+          </div>
+          <div className="bg-gray-800/80 p-4 rounded-xl text-center flex flex-col items-center justify-center border border-gray-700">
+            <Construction size={32} className="mb-2 text-orange-400" />
+            <div className="text-2xl font-bold">{damageStats.roadsBlocked}</div>
+            <div className="text-sm text-gray-400">Đường bị chặn</div>
+          </div>
+        </div>
+
+        {/* NÚT KÍCH HOẠT LỚN */}
+        <button
+          onClick={onActivate}
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl text-lg transition-all shadow-xl hover:shadow-red-900/50 hover:scale-[1.02] flex items-center justify-center gap-3"
+        >
+          <Siren size={24} />
+          KÍCH HOẠT LỆNH SƠ TÁN NGAY
+        </button>
+      </div>
+
+      {/* CHI TIẾT KẾ HOẠCH SƠ TÁN */}
+      <div className="bg-gray-800/60 backdrop-blur-md rounded-2xl p-6 border border-gray-700">
+        <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
+          <ClipboardList size={24} className="text-blue-400" />
+          Chi tiết Kế hoạch Sơ tán
+        </h3>
+        
+        <div className="space-y-4"> {/* Tăng khoảng cách giữa các bước lên một chút */}
+          <div className="flex items-start space-x-3">
+            <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0 shadow-md shadow-blue-900/50">
+              1
+            </div>
+            <div className="flex-1 mt-1"> {/* Thêm mt-1 để căn giữa chữ với hình tròn */}
+              <div className="font-semibold text-white">Phát lệnh sơ tán khẩn cấp</div>
+              <div className="text-sm text-gray-400 mt-0.5">
+                Gửi thông báo đến <span className="text-gray-200 font-medium">{damageStats.populationEvacuated.toLocaleString()}</span> người dân qua SMS & Push Notification
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-start space-x-3">
+            <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0 shadow-md shadow-blue-900/50">
+              2
+            </div>
+            <div className="flex-1 mt-1">
+              <div className="font-semibold text-white">Hướng dẫn tuyến di chuyển an toàn</div>
+              <div className="text-sm text-gray-400 mt-0.5">
+                Chỉ dẫn đường đến 8 điểm tị nạn còn sức chứa
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-start space-x-3">
+            <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0 shadow-md shadow-blue-900/50">
+              3
+            </div>
+            <div className="flex-1 mt-1">
+              <div className="font-semibold text-white">Điều động đội cứu hộ</div>
+              <div className="text-sm text-gray-400 mt-0.5">
+                Huy động 5 đội cứu hộ hỗ trợ vùng nguy hiểm
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-start space-x-3">
+            <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0 shadow-md shadow-blue-900/50">
+              4
+            </div>
+            <div className="flex-1 mt-1">
+              <div className="font-semibold text-white">Theo dõi tiến độ real-time</div>
+              <div className="text-sm text-gray-400 mt-0.5">
+                Cập nhật trạng thái di chuyển qua GPS tracking
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
