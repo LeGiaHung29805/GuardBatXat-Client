@@ -23,11 +23,34 @@ const RescueMapWithRouting = dynamic(
   }
 );
 
-const ALL_MISSIONS = [
+// ==================== DỮ LIỆU NHIỆM VỤ ====================
+// Mỗi nhiệm vụ có thể có điểm xuất phát riêng (startPos)
+// Nếu không có startPos riêng, sẽ dùng DEFAULT_START_POS
+
+interface MissionData {
+  id: string;
+  requesterName: string;
+  location: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
+  startPos?: [number, number]; // Điểm xuất phát riêng của đội cứu hộ cho nhiệm vụ này
+  phoneNumber: string;
+  peopleCount: number;
+  description: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+}
+
+// Điểm xuất phát mặc định (UBND thị trấn Bát Xát)
+const DEFAULT_START_POS: [number, number] = [22.5284, 103.9998];
+
+const ALL_MISSIONS: MissionData[] = [
   {
     id: 'SOS001',
     requesterName: 'Nguyễn Văn A',
-    location: { lat: 22.5101, lng: 103.9756, address: 'Thôn Nậm Pung, Xã Bát Xát' },
+    location: { lat: 22.538547, lng: 103.847598, address: 'Thôn Nậm Pung, Xã Bát Xát' },
+    startPos: [22.539768, 103.845484],
     phoneNumber: '0909123456',
     peopleCount: 3,
     description: '3 người mắc kẹt trên mái nhà, nước dâng nhanh',
@@ -36,7 +59,7 @@ const ALL_MISSIONS = [
   {
     id: 'SOS002',
     requesterName: 'Trần Thị B',
-    location: { lat: 22.4712, lng: 103.9512, address: 'Thôn Làng Mô, Xã Bát Xát' },
+    location: { lat: 22.5248, lng: 103.9945, address: 'Thôn Làng Mô, Xã Bát Xát' },
     phoneNumber: '0909234567',
     peopleCount: 2,
     description: 'Nước ngập 1.5m, cần di dời 2 người già',
@@ -45,7 +68,8 @@ const ALL_MISSIONS = [
   {
     id: 'SOS003',
     requesterName: 'Lê Văn C',
-    location: { lat: 22.5023, lng: 103.9621, address: 'Thôn Phìn Ngan, Xã Bát Xát' },
+    location: { lat: 22.567763, lng: 103.832551, address: 'Thôn Phìn Ngan, Xã Bát Xát' },
+    startPos: [22.569019, 103.835669],
     phoneNumber: '0909345678',
     peopleCount: 4,
     description: 'Đất sạt nhẹ sau nhà, cần hỗ trợ di dời',
@@ -54,7 +78,7 @@ const ALL_MISSIONS = [
   {
     id: 'SOS004',
     requesterName: 'Phạm Thị D',
-    location: { lat: 22.5134, lng: 103.9834, address: 'Thôn Nậm Chạc, Xã Bát Xát' },
+    location: { lat: 22.5291, lng: 103.9978, address: 'Thôn Nậm Chạc, Xã Bát Xát' },
     phoneNumber: '0909456789',
     peopleCount: 1,
     description: 'Cụ già 85 tuổi mắc kẹt, nước ngập 1.2m',
@@ -63,7 +87,8 @@ const ALL_MISSIONS = [
   {
     id: 'SOS005',
     requesterName: 'Hoàng Văn E',
-    location: { lat: 22.4934, lng: 103.9889, address: 'Thản Mả, Xã Bản Qua' },
+    location: { lat: 22.530741, lng: 103.899260, address: 'Thôn Thản Mả, Xã Bát Xát' },
+    startPos: [22.532702, 103.895773],
     phoneNumber: '0909567890',
     peopleCount: 5,
     description: '5 người trên nóc nhà, nước dâng rất nhanh',
@@ -72,7 +97,7 @@ const ALL_MISSIONS = [
   {
     id: 'SOS006',
     requesterName: 'Đỗ Thị F',
-    location: { lat: 22.4778, lng: 103.9623, address: 'Thôn Cốc Ly, Xã Cốc Ly' },
+    location: { lat: 22.5205, lng: 103.9895, address: 'Thôn Cốc Ly, Xã Bát Xát' },
     phoneNumber: '0909678901',
     peopleCount: 2,
     description: 'Đã di dời thành công, cần kiểm tra lại',
@@ -81,16 +106,13 @@ const ALL_MISSIONS = [
   {
     id: 'SOS007',
     requesterName: 'Bùi Văn G',
-    location: { lat: 22.4689, lng: 103.9801, address: 'Thôn Séo Mý, Xã Bản Vược' },
+    location: { lat: 22.5268, lng: 104.0045, address: 'Thôn Séo Mý, Xã Bát Xát' },
     phoneNumber: '0909789012',
     peopleCount: 3,
     description: 'Nước rút, hỗ trợ dọn dẹp',
     priority: 'low',
   },
 ];
-
-// Trụ sở đội cứu hộ — Phường Lào Cai, TP Lào Cai
-const RESCUE_TEAM_POS: [number, number] = [22.4856, 103.9707];
 
 const priorityConfig = {
   critical: { label: 'Khẩn cấp', className: 'bg-red-50 text-red-700 border border-red-200' },
@@ -108,7 +130,7 @@ export default function RescueNavigation() {
   const [missionStarted, setMissionStarted] = useState(false);
   const [updates, setUpdates] = useState<FieldUpdateData[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
-  const [mission, setMission] = useState<(typeof ALL_MISSIONS)[0] | null>(null);
+  const [mission, setMission] = useState<MissionData | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -131,7 +153,7 @@ export default function RescueNavigation() {
   const handleFieldUpdate = (update: FieldUpdateData) => {
     setUpdates((prev) => [update, ...prev]);
     if (update.status === 'completed') {
-      alert('Nhiệm vụ hoàn thành! Cảm ơn đội cứu hộ.');
+      alert('🎉 Nhiệm vụ hoàn thành! Cảm ơn đội cứu hộ.');
     }
   };
 
@@ -150,8 +172,10 @@ export default function RescueNavigation() {
     );
   }
 
+  // Lấy điểm xuất phát: ưu tiên startPos riêng, nếu không có thì dùng mặc định
+  const startPos: [number, number] = mission.startPos || DEFAULT_START_POS;
   const destPos: [number, number] = [mission.location.lat, mission.location.lng];
-  const priority = priorityConfig[mission.priority as keyof typeof priorityConfig] ?? priorityConfig.medium;
+  const priority = priorityConfig[mission.priority] ?? priorityConfig.medium;
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
@@ -184,13 +208,12 @@ export default function RescueNavigation() {
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Map */}
         <div className="flex-1 relative min-h-[280px] lg:min-h-0">
-          <RescueMapWithRouting startPos={RESCUE_TEAM_POS} destPos={destPos} onRouteFound={handleRouteFound} />
+          <RescueMapWithRouting startPos={startPos} destPos={destPos} onRouteFound={handleRouteFound} />
         </div>
 
         {/* Sidebar */}
         <div className="lg:w-[380px] bg-white border-l border-slate-200 overflow-y-auto">
           <div className="p-5 space-y-4">
-
             {/* Thông tin người báo */}
             <section>
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -221,9 +244,8 @@ export default function RescueNavigation() {
               </div>
             </section>
 
-            {/* Thông tin tuyến đường — Google Maps style */}
+            {/* Thông tin tuyến đường */}
             <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-              {/* Car icon — giống Google Maps */}
               <svg className="h-5 w-5 text-slate-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM19 17H5v-5h14v5z"/>
                 <circle cx="7.5" cy="14.5" r="1.5"/>
@@ -254,8 +276,8 @@ export default function RescueNavigation() {
                 <div>
                   <p className="text-sm font-semibold text-amber-900 mb-1.5">Cảnh báo trên tuyến</p>
                   <ul className="space-y-1">
-                    <li className="text-sm text-amber-700">Đèo Nậm Pung: nguy cơ sạt lở thấp</li>
-                    <li className="text-sm text-amber-700">Đường trơn trượt sau mưa, đi chậm</li>
+                    <li className="text-sm text-amber-700">Đường đèo: nguy cơ sạt lở thấp, chú ý quan sát</li>
+                    <li className="text-sm text-amber-700">Đường trơn trượt sau mưa, giảm tốc độ</li>
                   </ul>
                 </div>
               </div>
