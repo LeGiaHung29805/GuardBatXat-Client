@@ -61,6 +61,7 @@ export interface LocationCheckResponse {
     landslideRiskStatus: string;
     floodDepth: number;
     aiLandslideProb: number;
+    aiFloodProb: number;
     buildingType: string;
     distanceToWater: number;
     currentElevation: number;

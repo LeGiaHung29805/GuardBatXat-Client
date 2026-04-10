@@ -118,7 +118,8 @@ const RealtimeHeatmap = () => {
                 </div>
 
                 <div className="mt-2 space-y-2 border-t pt-4">
-                    <div className="flex items-center justify-between text-xs font-medium">
+                    {/* Thêm class text-slate-700 vào đây để đổi màu chữ thành xám đậm */}
+                    <div className="flex items-center justify-between text-xs font-medium text-slate-700">
                         <div className="flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full bg-[#dc2626]" /> <span>Rất cao</span>
                         </div>

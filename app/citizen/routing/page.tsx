@@ -9,15 +9,34 @@ const SafeRouteMap = dynamic(() => import('@/components/ui/SafeRouteMap'), { ssr
 
 export default function SafeRoutingPage() {
     const [loading, setLoading] = useState(false);
-    const [startLoc, setStartLoc] = useState<{lat: number, lng: number} | null>(null);
-    const [destLoc, setDestLoc] = useState<{lat: number, lng: number} | null>(null);
+    const [startLoc, setStartLoc] = useState<{ lat: number, lng: number } | null>(null);
+    const [destLoc, setDestLoc] = useState<{ lat: number, lng: number } | null>(null);
     const [route, setRoute] = useState<[number, number][]>([]);
     const [message, setMessage] = useState<string>('');
 
-    // Lấy GPS khi vừa vào trang
     useEffect(() => {
-        // TỌA ĐỘ MOCK ĐỂ TEST TRÊN MÁY TÍNH (Bạn có thể đổi sang navigator.geolocation sau)
-        setStartLoc({ lat: 22.6105, lng: 103.8012 });
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // Cập nhật state với tọa độ thật
+                    setStartLoc({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                },
+                (error) => {
+                    console.error("Lỗi lấy vị trí GPS:", error);
+                    alert("Không thể tự động lấy vị trí của bạn. Vui lòng cấp quyền truy cập vị trí trên trình duyệt!");
+                },
+                {
+                    enableHighAccuracy: true, 
+                    timeout: 10000,           
+                    maximumAge: 0             
+                }
+            );
+        } else {
+            alert("Trình duyệt hoặc thiết bị của bạn không hỗ trợ định vị GPS.");
+        }
     }, []);
 
     const handleFindRoute = async () => {
@@ -73,7 +92,7 @@ export default function SafeRoutingPage() {
                     </div>
                 </div>
 
-                <button 
+                <button
                     onClick={handleFindRoute}
                     disabled={loading || !destLoc}
                     className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold rounded-lg transition-all"
@@ -91,11 +110,11 @@ export default function SafeRoutingPage() {
 
             {/* Cột phải: Bản đồ */}
             <div className="flex-1 h-[60vh] md:h-screen">
-                <SafeRouteMap 
-                    startLoc={startLoc} 
-                    destLoc={destLoc} 
-                    setDestLoc={setDestLoc} 
-                    routeCoords={route} 
+                <SafeRouteMap
+                    startLoc={startLoc}
+                    destLoc={destLoc}
+                    setDestLoc={setDestLoc}
+                    routeCoords={route}
                 />
             </div>
         </div>
