@@ -19,12 +19,12 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
   // Xử lý tọa độ thật của từng ngôi nhà/đoạn đường để vẽ Bản đồ nhiệt
   const heatData: [number, number, number][] = [
     ...floodPoints.map(pt => {
-      const geo = JSON.parse(pt.geojson);
-      return [geo.coordinates[1], geo.coordinates[0], 0.6] as [number, number, number]; 
+      const geo = typeof pt.geojson === 'string' ? JSON.parse(pt.geojson) : pt.geojson;
+      return [geo.coordinates[1], geo.coordinates[0], pt.muc_do ?? 0.6] as [number, number, number]; 
     }),
     ...landslidePoints.map(pt => {
-      const geo = JSON.parse(pt.geojson);
-      return [geo.coordinates[1], geo.coordinates[0], 1.0] as [number, number, number]; 
+      const geo = typeof pt.geojson === 'string' ? JSON.parse(pt.geojson) : pt.geojson;
+      return [geo.coordinates[1], geo.coordinates[0], pt.muc_do ?? 1.0] as [number, number, number]; 
     })
   ];
 

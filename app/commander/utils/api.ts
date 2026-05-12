@@ -49,11 +49,11 @@ class ApiService {
 
   // ==================== HEATMAP (Bản đồ số GIS) ====================
   async getCommanderFloodHeatmap(level: string) {
-    return this.fetchWithAuth(`/commander/dashboard/commander-heatmap-flood?level=${level}`);
+    return this.fetchWithAuth(`/v1/commander/dashboard/commander-heatmap-flood?level=${level}`);
   }
 
   async getCommanderLandslideHeatmap() {
-    return this.fetchWithAuth(`/commander/dashboard/commander-heatmap-landslide`);
+    return this.fetchWithAuth(`/v1/commander/dashboard/commander-heatmap-landslide`);
   }
 
   // ==================== PHÂN TÍCH THIỆT HẠI ====================

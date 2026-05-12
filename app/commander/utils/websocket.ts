@@ -1,56 +1,99 @@
-import { Client } from '@stomp/stompjs';
+import { Client, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
 type MessageHandler = (data: any) => void;
 
 class WebSocketService {
   private client: Client | null = null;
+  // Giữ lại cơ chế on() cũ
   private handlers: Map<string, MessageHandler[]> = new Map();
+  
+  // Cơ chế mới: Quản lý các topic STOMP động
+  private activeSubscriptions: Map<string, StompSubscription> = new Map();
+  private pendingSubscriptions: Map<string, MessageHandler> = new Map();
 
   connect(token: string) {
-    // Lưu ý: SockJS dùng link http/https thay vì ws/wss như websocket thuần
     const wsUrl = process.env.NEXT_PUBLIC_API_URL 
         ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '/ws-guardbatxat') 
         : "http://localhost:8080/ws-guardbatxat";
 
     this.client = new Client({
-      // Dùng SockJS làm lớp bọc an toàn
       webSocketFactory: () => new SockJS(wsUrl),
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
       debug: (str) => {
-        // Log ẩn: bạn có thể mở ra để xem dữ liệu chạy ngầm nếu cần
         // console.log('📡 [STOMP]: ' + str);
       },
-      reconnectDelay: 5000, // Tự động gọi lại sau 5s nếu mất mạng
+      reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     });
 
-    // Khi kết nối thành công tới Spring Boot
     this.client.onConnect = (frame) => {
       console.log("✅ Đã kết nối WebSocket (STOMP) thành công!");
       
-      // Đăng ký lắng nghe kênh /topic/alerts (Nơi Ban chỉ huy phát loa)
+      // Đăng ký cứng kênh cũ để tương thích ngược
       this.client?.subscribe('/topic/alerts', (message) => {
         if (message.body) {
-          const data = JSON.parse(message.body);
-          this.handleMessage(data); 
+          try {
+            const data = JSON.parse(message.body);
+            this.handleMessage(data); 
+          } catch(e) {}
         }
       });
+
+      // Đăng ký các topic đang chờ (do component gọi subscribe trước khi kết nối xong)
+      this.pendingSubscriptions.forEach((handler, destination) => {
+        this.doSubscribe(destination, handler);
+      });
+      this.pendingSubscriptions.clear();
     };
 
-    // Khi rớt mạng hoặc lỗi giao thức
     this.client.onStompError = (frame) => {
       console.error('❌ Lỗi kết nối STOMP: ' + frame.headers['message']);
     };
 
-    // Kích hoạt kết nối
     this.client.activate();
   }
 
-  // Điều phối tin nhắn tới các màn hình
+  // --- CƠ CHẾ MỚI: DÀNH CHO CÁC TOPIC BẤT KỲ (NHƯ /topic/emergency) ---
+  subscribe(destination: string, handler: MessageHandler) {
+    if (this.client && this.client.connected) {
+      this.doSubscribe(destination, handler);
+    } else {
+      // Lưu lại chờ kết nối xong sẽ subscribe
+      this.pendingSubscriptions.set(destination, handler);
+    }
+  }
+
+  unsubscribe(destination: string) {
+    if (this.activeSubscriptions.has(destination)) {
+      this.activeSubscriptions.get(destination)?.unsubscribe();
+      this.activeSubscriptions.delete(destination);
+    }
+    this.pendingSubscriptions.delete(destination);
+  }
+
+  private doSubscribe(destination: string, handler: MessageHandler) {
+    if (!this.client || this.activeSubscriptions.has(destination)) return;
+
+    const subscription = this.client.subscribe(destination, (message) => {
+      if (message.body) {
+        try {
+          const data = JSON.parse(message.body);
+          handler(data);
+        } catch (e) {
+          console.error(`Lỗi parse JSON từ ${destination}:`, e);
+          handler(message.body); // Trả về text thô nếu không phải JSON
+        }
+      }
+    });
+
+    this.activeSubscriptions.set(destination, subscription);
+  }
+
+  // --- CƠ CHẾ CŨ (Tương thích với mã nguồn hiện tại) ---
   private handleMessage(message: { type: string; [key: string]: any }) {
     const handlers = this.handlers.get(message.type);
     if (handlers) {
@@ -58,7 +101,6 @@ class WebSocketService {
     }
   }
 
-  // Màn hình đăng ký lắng nghe sự kiện
   on(eventType: string, handler: MessageHandler) {
     if (!this.handlers.has(eventType)) {
       this.handlers.set(eventType, []);
@@ -66,7 +108,6 @@ class WebSocketService {
     this.handlers.get(eventType)!.push(handler);
   }
 
-  // Hủy lắng nghe
   off(eventType: string, handler: MessageHandler) {
     const handlers = this.handlers.get(eventType);
     if (handlers) {
@@ -77,7 +118,6 @@ class WebSocketService {
     }
   }
 
-  // Hàm gửi (nếu Frontend cần đẩy data ngược lại qua WS)
   send(destination: string, body: any) {
     if (this.client && this.client.connected) {
       this.client.publish({ destination, body: JSON.stringify(body) });
@@ -86,13 +126,14 @@ class WebSocketService {
     }
   }
 
-  // Ngắt kết nối khi chuyển trang hoặc đóng trình duyệt
   disconnect() {
     if (this.client) {
       this.client.deactivate();
       this.client = null;
     }
     this.handlers.clear();
+    this.activeSubscriptions.clear();
+    this.pendingSubscriptions.clear();
     console.log("🔌 Đã ngắt kết nối WebSocket");
   }
 }

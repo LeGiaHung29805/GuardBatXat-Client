@@ -19,6 +19,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import websocket from '@/app/commander/utils/websocket';
+import ToastContainer, { showToast } from '@/components/ui/Toast';
 
 // ==================== Types ====================
 interface SOSRequest {
@@ -146,25 +148,6 @@ const ALL_MISSIONS: SOSRequest[] = [
   },
 ];
 
-// ==================== Component Toast ====================
-let toastTimeout: NodeJS.Timeout;
-const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 'error' | 'info'; onClose: () => void }) => {
-  useEffect(() => {
-    toastTimeout = setTimeout(onClose, 3000);
-    return () => clearTimeout(toastTimeout);
-  }, [onClose]);
-
-  const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
-  return (
-    <div className={`fixed bottom-5 right-5 z-50 ${bgColor} text-white px-5 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-right`}>
-      {type === 'success' && <CheckCircle className="h-5 w-5" />}
-      {type === 'error' && <XCircle className="h-5 w-5" />}
-      {type === 'info' && <AlertCircle className="h-5 w-5" />}
-      <span className="text-sm font-medium">{message}</span>
-    </div>
-  );
-};
-
 // ==================== Priority Config ====================
 const priorityConfig = {
   critical: { color: 'text-red-700', bg: 'bg-red-100', border: 'border-red-500', label: 'KHẨN CẤP', icon: '🔴' },
@@ -181,7 +164,6 @@ export default function RescueDashboard() {
   const [completedMissions, setCompletedMissions] = useState<SOSRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Load initial data
   const loadData = useCallback(() => {
@@ -200,28 +182,61 @@ export default function RescueDashboard() {
 
   useEffect(() => {
     loadData();
+
+    // Kết nối WebSocket
+    const token = localStorage.getItem("token") || "guest";
+    websocket.connect(token);
+
+    // Lắng nghe tín hiệu SOS khẩn cấp
+    websocket.subscribe("/topic/emergency", (data) => {
+      console.log("Nhận được tín hiệu SOS:", data);
+      showToast(
+        "danger", 
+        "TÍN HIỆU SOS KHẨN CẤP", 
+        `Nạn nhân: ${data.senderPhone || "Không rõ"}\nTin nhắn: ${data.message}\nTọa độ: [${data.lat}, ${data.lng}]`
+      );
+
+      // Cập nhật danh sách pending động
+      const newSOS: SOSRequest = {
+        id: `SOS_NEW_${Date.now()}`,
+        requesterName: data.senderPhone || 'Ẩn danh',
+        location: {
+          lat: data.lat,
+          lng: data.lng,
+          address: 'Tọa độ GPS',
+        },
+        priority: 'critical',
+        description: data.message,
+        status: 'pending',
+        createdAt: new Date(),
+        phoneNumber: data.senderPhone || 'N/A',
+      };
+      setPendingMissions(prev => [newSOS, ...prev]);
+    });
+
+    // Lắng nghe cập nhật vị trí
+    websocket.subscribe("/topic/rescue-tracking", (data) => {
+      // Có thể xử lý cập nhật Live Tracking ở đây
+    });
+
+    return () => {
+      websocket.disconnect();
+    };
   }, [loadData]);
 
   // Reset to initial state
   const resetData = () => {
     loadData();
-    showToast('Đã khôi phục dữ liệu mẫu', 'success');
+    showToast('info', 'Thông báo', 'Đã khôi phục dữ liệu mẫu');
   };
 
-  // Refresh: đồng bộ với ALL_MISSIONS nhưng giữ lại các mission đã được nhận/hoàn thành trong phiên?
-  // Ở đây ta reset hoàn toàn để demo nhất quán. Nếu muốn "làm mới" chỉ lấy pending mới, có thể logic phức tạp hơn.
-  // Vì đây là demo, dùng reset là dễ hiểu.
   const handleRefresh = () => {
     setRefreshing(true);
     setTimeout(() => {
       loadData();
       setRefreshing(false);
-      showToast('Đã cập nhật danh sách nhiệm vụ', 'info');
+      showToast('info', 'Thông báo', 'Đã cập nhật danh sách nhiệm vụ');
     }, 600);
-  };
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ message, type });
   };
 
   // Nhận nhiệm vụ
@@ -229,14 +244,14 @@ export default function RescueDashboard() {
     // Chuyển từ pending -> active
     setPendingMissions((prev) => prev.filter((m) => m.id !== mission.id));
     setActiveMissions((prev) => [...prev, { ...mission, status: 'accepted' }]);
-    showToast(`Đã nhận nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
+    showToast('info', 'Thành công', `Đã nhận nhiệm vụ ${mission.id} - ${mission.requesterName}`);
   };
 
   // Hoàn thành nhiệm vụ
   const completeMission = (mission: SOSRequest) => {
     setActiveMissions((prev) => prev.filter((m) => m.id !== mission.id));
     setCompletedMissions((prev) => [...prev, { ...mission, status: 'completed' }]);
-    showToast(`✅ Hoàn thành nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
+    showToast('info', 'Hoàn thành', `✅ Hoàn thành nhiệm vụ ${mission.id} - ${mission.requesterName}`);
   };
 
   // Format thời gian
@@ -265,9 +280,8 @@ export default function RescueDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Toast */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
+      <ToastContainer />
 
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b sticky top-0 z-10">

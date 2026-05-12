@@ -16,6 +16,7 @@ import {
   Megaphone,
   Loader2
 } from "lucide-react"; 
+import ToastContainer, { showToast } from "@/components/ui/Toast";
 
 export default function PCTTCommanderDashboard() {
   const [activeTab, setActiveTab] = useState<"monitor" | "evacuate" | "analyze" | "alert">("monitor");
@@ -82,9 +83,38 @@ export default function PCTTCommanderDashboard() {
     const token = localStorage.getItem("token") || "guest";
     websocket.connect(token);
 
+    // Lắng nghe API cũ
     websocket.on("MANUAL_ALERT", (data) => {
       console.log("Nhận được thông báo mới qua WebSocket:", data);
       fetchAlertHistory(); 
+    });
+
+    // Lắng nghe tín hiệu SOS khẩn cấp
+    websocket.subscribe("/topic/emergency", (data) => {
+      console.log("Nhận được tín hiệu SOS:", data);
+      showToast(
+        "danger", 
+        "TÍN HIỆU SOS KHẨN CẤP", 
+        `Nạn nhân: ${data.senderPhone || "Không rõ"}\nTin nhắn: ${data.message}\nTọa độ: [${data.lat}, ${data.lng}]`
+      );
+    });
+
+    // Lắng nghe cảnh báo rủi ro an toàn từ AI
+    websocket.subscribe("/topic/safety-alerts", (data) => {
+      console.log("Cảnh báo AI:", data);
+      if (data.alertLevel === "DANGER" || data.alertLevel === "WARNING") {
+        showToast(
+          data.alertLevel === "DANGER" ? "danger" : "warning",
+          "HỆ THỐNG CẢNH BÁO RỦI RO",
+          data.message
+        );
+      }
+    });
+
+    // Lắng nghe live update thống kê (nếu có)
+    websocket.subscribe("/topic/safety-stats", (data) => {
+      // Có thể làm mới dashboard ngầm
+      // fetchDataForScenario();
     });
   };
 
@@ -102,11 +132,10 @@ export default function PCTTCommanderDashboard() {
       const levelNumber = selectedScenario.replace('m', '');
       const response: any = await api.activateEvacuation(levelNumber);
       
-      // ĐÃ SỬA: Bỏ .message vì bây giờ API tự bóc vỏ và trả về thẳng chuỗi text trong data
-      alert(`🚨 ${response}`); 
+      showToast("info", "Thông báo", response);
       
     } catch (error: any) {
-      alert(`❌ Lỗi: ${error.message}`);
+      showToast("danger", "Lỗi", error.message);
     } finally {
       setLoading(false);
     }
@@ -122,10 +151,10 @@ export default function PCTTCommanderDashboard() {
         targetArea: "Tất cả" 
       });
 
-      alert(`✅ Đã phát loa cảnh báo thành công!`);
+      showToast("info", "Thành công", "Đã phát loa cảnh báo thành công!");
       fetchAlertHistory(); 
     } catch (error: any) {
-      alert(`❌ Lỗi: ${error.message}`);
+      showToast("danger", "Lỗi", error.message);
     } finally {
       setLoading(false);
     }
@@ -157,7 +186,9 @@ export default function PCTTCommanderDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 text-white relative">
+      <ToastContainer />
+      
       {loading && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-gray-800/90 border border-gray-700 rounded-2xl p-8 flex flex-col items-center shadow-2xl">

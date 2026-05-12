@@ -79,8 +79,12 @@ export interface RoutingResponseData {
 
 // ============= SOS TYPES =============
 export interface SosRequest {
-  senderPhone: string;
-  message: string;
+  senderPhone?: string;
+  senderName?: string;
+  totalPeople?: number;
+  elderlyCount?: number;
+  childrenCount?: number;
+  message?: string;
   lat: number;
   lng: number;
 }

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { ApiClient } from '@/lib/ApiClient';
 import { LocationCheckResponse } from '@/lib/Model';
 import 'leaflet/dist/leaflet.css';
+import websocket from '@/app/commander/utils/websocket';
+import ToastContainer, { showToast } from '@/components/ui/Toast';
 
 // Load bản đồ và các component của Leaflet
 const BatXatBoundaryMap = dynamic(() => import('@/components/ui/BatXatBoundaryMap'), { ssr: false });
@@ -87,6 +89,33 @@ export default function SafetyCheckPage() {
         return () => { isMounted = false; };
     }, []);
 
+    // 3. Khởi tạo kết nối WebSocket để nhận cảnh báo theo thời gian thực
+    useEffect(() => {
+        const token = localStorage.getItem("token") || "guest";
+        websocket.connect(token);
+
+        websocket.subscribe("/topic/safety-alerts", (data: LocationCheckResponse) => {
+            // Khi có cảnh báo mới, hiển thị Toast nếu đây là Danger
+            if (data.alertLevel === 'DANGER' || data.alertLevel === 'WARNING') {
+                showToast(
+                    data.alertLevel === 'DANGER' ? 'danger' : 'warning',
+                    'CẢNH BÁO RỦI RO THỜI GIAN THỰC',
+                    data.message
+                );
+            }
+            
+            // Nếu người dùng đang tra cứu và vị trí trùng với vùng cảnh báo, tự động cập nhật kết quả
+            // (Trong thực tế cần kiểm tra tọa độ, ở đây demo sẽ override nếu có risk)
+            if (currentLoc && data.alertLevel === 'DANGER') {
+                setResult(data);
+            }
+        });
+
+        return () => {
+            websocket.disconnect();
+        };
+    }, [currentLoc]);
+
     const handleUseGPS = () => {
         setLoading(true);
         if ("geolocation" in navigator) {
@@ -141,7 +170,9 @@ export default function SafetyCheckPage() {
     };
 
     return (
-        <div className="flex flex-col md:flex-row h-full w-full bg-gray-50">
+        <div className="flex flex-col md:flex-row h-full w-full bg-gray-50 relative">
+            <ToastContainer />
+            
             {/* Cột trái */}
             <div className="w-full md:w-[450px] h-auto md:h-full p-6 bg-white shadow-2xl z-10 overflow-y-auto flex flex-col">
                 <h1 className="text-2xl font-black text-blue-700 mb-2">Tra Cứu An Toàn</h1>
