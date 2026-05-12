@@ -15,7 +15,7 @@ import {
 // Gốc của API thiết lập về /api
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true" || true;
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 // Khởi tạo 1 Axios Instance duy nhất
 const axiosInstance = axios.create({
@@ -66,7 +66,24 @@ axiosInstance.interceptors.response.use(
         }
       }
     }
-    const errorMessage = error.response?.data?.message || "Lỗi kết nối máy chủ";
+    
+    // Xác định error message
+    let errorMessage = "Lỗi kết nối máy chủ";
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.response?.status === 0 || error.message === "Network Error") {
+      errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend đang chạy tại http://localhost:8080";
+    } else if (error.response?.status >= 500) {
+      errorMessage = `Lỗi máy chủ (${error.response.status}): ${error.response?.data?.message || "Vui lòng thử lại sau"}`;
+    }
+    
+    console.error("[API Error]", {
+      status: error.response?.status,
+      message: errorMessage,
+      url: error.config?.url,
+      data: error.response?.data,
+    });
+    
     return Promise.reject(new Error(errorMessage));
   },
 );
@@ -123,6 +140,7 @@ export const ApiClient = {
     const response = await axiosInstance.post("/v1/routing/safe-route", data);
     return response.data;
   },
+  
   findSafeShelters: async (
     data: SafeShelterRequest,
   ): Promise<ApiResponse<SafeShelterResponseData>> => {
@@ -145,6 +163,30 @@ export const ApiClient = {
       "/v1/map/internal/trigger-broadcast",
       data,
     );
+    return response.data;
+  },
+
+  // ==========================================
+  // --- RESCUE TEAM ---
+  // ==========================================
+  getRescueSosRequests: async (): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.get("/v1/rescue/sos");
+    return response.data;
+  },
+  acceptRescueSosRequest: async (id: number): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.put(`/v1/rescue/sos/${id}/accept`);
+    return response.data;
+  },
+  completeRescueSosRequest: async (id: number): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.put(`/v1/rescue/sos/${id}/complete`);
+    return response.data;
+  },
+  getSosFieldUpdates: async (id: string | number): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.get(`/v1/rescue/sos/${id}/updates`);
+    return response.data;
+  },
+  sendSosFieldUpdate: async (id: string | number, data: any): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.post(`/v1/rescue/sos/${id}/updates`, data);
     return response.data;
   },
 

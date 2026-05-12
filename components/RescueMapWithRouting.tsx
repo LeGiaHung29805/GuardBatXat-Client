@@ -141,8 +141,8 @@ export default function RescueMapWithRouting({ startPos, destPos, onRouteFound }
         hidePanel();
         const summary = e.routes[0].summary;
         const rawKm  = summary.totalDistance / 1000;
-        const distKm = Math.min(Math.round(rawKm * 10) / 10, 8.0);
-        const durMin = Math.round(Math.min(summary.totalTime / 60, distKm * 3));
+        const distKm = Math.round(rawKm * 10) / 10;
+        const durMin = Math.round(summary.totalTime / 60);
         onRouteFound?.(distKm, durMin);
       });
     });

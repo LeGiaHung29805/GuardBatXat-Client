@@ -41,7 +41,17 @@ export default function AuthPage() {
                 localStorage.setItem("jwt_token", token);
 
                 setAuthToken(token);
-                router.push("/citizen/evacuation");
+
+                const profileRes = await ApiClient.getMyProfile();
+                const roleName = profileRes.data?.roleName;
+
+                if (roleName === "RESCUE_TEAM") {
+                    router.push("/rescue");
+                } else if (roleName === "ADMIN") {
+                    router.push("/admin");
+                } else {
+                    router.push("/citizen/evacuation");
+                }
 
             } else {
                 await ApiClient.register({

@@ -63,9 +63,10 @@ export default function EvacuationPage() {
             } else {
                 alert(result.data?.message || "Không tìm thấy đường đi an toàn.");
             }
-        } catch (error) {
-            console.error(error);
-            alert("Lỗi kết nối đến máy chủ hệ thống.");
+        } catch (error: any) {
+            console.error("Error finding shelter:", error);
+            const errorMsg = error?.message || "Lỗi kết nối đến máy chủ hệ thống.";
+            alert(errorMsg);
         } finally {
             setLoading(false);
         }
