@@ -20,9 +20,12 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+import { ApiClient } from '@/lib/ApiClient';
+
 // ==================== Types ====================
+// Thay đổi interface để khớp với SosResponse từ backend
 interface SOSRequest {
-  id: string;
+  id: string | number;
   requesterName: string;
   location: {
     lat: number;
@@ -36,115 +39,6 @@ interface SOSRequest {
   createdAt: Date;
   phoneNumber: string;
 }
-
-// ==================== Dữ liệu mẫu (đầy đủ trạng thái) ====================
-const ALL_MISSIONS: SOSRequest[] = [
-  {
-    id: 'SOS001',
-    requesterName: 'Nguyễn Văn A',
-    location: {
-      lat: 22.62,
-      lng: 103.72,
-      address: 'Thôn Nậm Pung, Xã Trịnh Tường, Bát Xát',
-    },
-    priority: 'critical',
-    description: '3 người mắc kẹt trên mái nhà, nước dâng nhanh',
-    peopleCount: 3,
-    status: 'pending',
-    createdAt: new Date(Date.now() - 15 * 60000),
-    phoneNumber: '0909123456',
-  },
-  {
-    id: 'SOS002',
-    requesterName: 'Trần Thị B',
-    location: {
-      lat: 22.605,
-      lng: 103.71,
-      address: 'Thôn Làng Mô, Xã Bản Qua, Bát Xát',
-    },
-    priority: 'high',
-    description: 'Nước ngập 1.5m, cần di dời 2 người già',
-    peopleCount: 2,
-    status: 'pending',
-    createdAt: new Date(Date.now() - 35 * 60000),
-    phoneNumber: '0909234567',
-  },
-  {
-    id: 'SOS003',
-    requesterName: 'Lê Văn C',
-    location: {
-      lat: 22.63,
-      lng: 103.725,
-      address: 'Thôn Phìn Ngan, Xã Phìn Ngan, Bát Xát',
-    },
-    priority: 'medium',
-    description: 'Đất sạt nhẹ sau nhà, cần hỗ trợ di dời',
-    peopleCount: 4,
-    status: 'pending',
-    createdAt: new Date(Date.now() - 120 * 60000),
-    phoneNumber: '0909345678',
-  },
-  {
-    id: 'SOS004',
-    requesterName: 'Phạm Thị D',
-    location: {
-      lat: 22.615,
-      lng: 103.73,
-      address: 'Thôn Nậm Chạc, Xã Trịnh Tường',
-    },
-    priority: 'high',
-    description: 'Cụ già 85 tuổi mắc kẹt, nước ngập 1.2m',
-    peopleCount: 1,
-    status: 'accepted',
-    createdAt: new Date(Date.now() - 45 * 60000),
-    phoneNumber: '0909456789',
-  },
-  {
-    id: 'SOS005',
-    requesterName: 'Hoàng Văn E',
-    location: {
-      lat: 22.608,
-      lng: 103.715,
-      address: 'Thản Mả, Xã Bản Qua',
-    },
-    priority: 'critical',
-    description: '5 người trên nóc nhà, nước dâng rất nhanh',
-    peopleCount: 5,
-    status: 'accepted',
-    createdAt: new Date(Date.now() - 70 * 60000),
-    phoneNumber: '0909567890',
-  },
-  {
-    id: 'SOS006',
-    requesterName: 'Đỗ Thị F',
-    location: {
-      lat: 22.625,
-      lng: 103.74,
-      address: 'Thôn Cốc Ly, Xã Cốc Ly',
-    },
-    priority: 'medium',
-    description: 'Đã di dời thành công, cần kiểm tra lại',
-    peopleCount: 2,
-    status: 'completed',
-    createdAt: new Date(Date.now() - 180 * 60000),
-    phoneNumber: '0909678901',
-  },
-  {
-    id: 'SOS007',
-    requesterName: 'Bùi Văn G',
-    location: {
-      lat: 22.6,
-      lng: 103.7,
-      address: 'Thôn Séo Mý, Xã Bản Vược',
-    },
-    priority: 'low',
-    description: 'Nước rút, hỗ trợ dọn dẹp',
-    peopleCount: 3,
-    status: 'completed',
-    createdAt: new Date(Date.now() - 240 * 60000),
-    phoneNumber: '0909789012',
-  },
-];
 
 // ==================== Component Toast ====================
 let toastTimeout: NodeJS.Timeout;
@@ -167,10 +61,10 @@ const Toast = ({ message, type, onClose }: { message: string; type: 'success' | 
 
 // ==================== Priority Config ====================
 const priorityConfig = {
-  critical: { color: 'text-red-700', bg: 'bg-red-100', border: 'border-red-500', label: 'KHẨN CẤP', icon: '🔴' },
-  high: { color: 'text-orange-700', bg: 'bg-orange-100', border: 'border-orange-500', label: 'CAO', icon: '🟠' },
-  medium: { color: 'text-yellow-700', bg: 'bg-yellow-100', border: 'border-yellow-500', label: 'TRUNG BÌNH', icon: '🟡' },
-  low: { color: 'text-blue-700', bg: 'bg-blue-100', border: 'border-blue-500', label: 'THẤP', icon: '🔵' },
+  critical: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/50', label: 'KHẨN CẤP', icon: '🔴' },
+  high: { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/50', label: 'CAO', icon: '🟠' },
+  medium: { color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50', label: 'TRUNG BÌNH', icon: '🟡' },
+  low: { color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/50', label: 'THẤP', icon: '🔵' },
 };
 
 // ==================== Component chính ====================
@@ -183,60 +77,89 @@ export default function RescueDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
-  // Load initial data
-  const loadData = useCallback(() => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ message, type });
+  };
+
+  // Load real data from API
+  const loadData = useCallback(async () => {
     setLoading(true);
-    // Simulate API delay
-    setTimeout(() => {
-      const pending = ALL_MISSIONS.filter((m) => m.status === 'pending');
-      const active = ALL_MISSIONS.filter((m) => m.status === 'accepted');
-      const completed = ALL_MISSIONS.filter((m) => m.status === 'completed');
-      setPendingMissions(pending);
-      setActiveMissions(active);
-      setCompletedMissions(completed);
+    try {
+      const res = await ApiClient.getRescueSosRequests();
+      const allSos: any[] = res.data || [];
+      
+      // Map từ DTO sang Frontend Interface
+      const mappedMissions: SOSRequest[] = allSos.map(sos => {
+          let mappedStatus: 'pending' | 'accepted' | 'completed' = 'pending';
+          if (sos.status === 'RESCUING') mappedStatus = 'accepted';
+          if (sos.status === 'COMPLETED') mappedStatus = 'completed';
+          
+          return {
+              id: sos.id,
+              requesterName: sos.senderName || 'Người dân',
+              location: {
+                  lat: sos.gpsLat,
+                  lng: sos.gpsLng,
+                  address: `Lat: ${sos.gpsLat}, Lng: ${sos.gpsLng}` // Hiện toạ độ vì chưa tích hợp Reverse Geocoding
+              },
+              priority: 'critical', // Có thể thêm logic tính toán mức độ ưu tiên
+              description: sos.message || 'Không có mô tả',
+              peopleCount: sos.totalPeople,
+              status: mappedStatus,
+              createdAt: new Date(sos.createdAt),
+              phoneNumber: sos.senderPhone
+          };
+      });
+
+      setPendingMissions(mappedMissions.filter((m) => m.status === 'pending'));
+      setActiveMissions(mappedMissions.filter((m) => m.status === 'accepted'));
+      setCompletedMissions(mappedMissions.filter((m) => m.status === 'completed'));
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu SOS:", error);
+      showToast('Lỗi tải dữ liệu. Vui lòng thử lại.', 'error');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Reset to initial state
-  const resetData = () => {
-    loadData();
-    showToast('Đã khôi phục dữ liệu mẫu', 'success');
-  };
-
-  // Refresh: đồng bộ với ALL_MISSIONS nhưng giữ lại các mission đã được nhận/hoàn thành trong phiên?
-  // Ở đây ta reset hoàn toàn để demo nhất quán. Nếu muốn "làm mới" chỉ lấy pending mới, có thể logic phức tạp hơn.
-  // Vì đây là demo, dùng reset là dễ hiểu.
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      loadData();
-      setRefreshing(false);
-      showToast('Đã cập nhật danh sách nhiệm vụ', 'info');
-    }, 600);
+    await loadData();
+    setRefreshing(false);
+    showToast('Đã cập nhật danh sách nhiệm vụ', 'info');
   };
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ message, type });
+  // Nhận nhiệm vụ (API Call)
+  const acceptMission = async (mission: SOSRequest) => {
+    try {
+      await ApiClient.acceptRescueSosRequest(mission.id as number);
+      // Thay đổi state tạm thời để UI cập nhật mượt hơn
+      setPendingMissions((prev) => prev.filter((m) => m.id !== mission.id));
+      setActiveMissions((prev) => [...prev, { ...mission, status: 'accepted' }]);
+      showToast(`Đã nhận nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
+      // Có thể gọi lại loadData() để đồng bộ toàn bộ
+      // loadData();
+    } catch (error) {
+      console.error(error);
+      showToast('Lỗi nhận nhiệm vụ', 'error');
+    }
   };
 
-  // Nhận nhiệm vụ
-  const acceptMission = (mission: SOSRequest) => {
-    // Chuyển từ pending -> active
-    setPendingMissions((prev) => prev.filter((m) => m.id !== mission.id));
-    setActiveMissions((prev) => [...prev, { ...mission, status: 'accepted' }]);
-    showToast(`Đã nhận nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
-  };
-
-  // Hoàn thành nhiệm vụ
-  const completeMission = (mission: SOSRequest) => {
-    setActiveMissions((prev) => prev.filter((m) => m.id !== mission.id));
-    setCompletedMissions((prev) => [...prev, { ...mission, status: 'completed' }]);
-    showToast(`✅ Hoàn thành nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
+  // Hoàn thành nhiệm vụ (API Call)
+  const completeMission = async (mission: SOSRequest) => {
+    try {
+      await ApiClient.completeRescueSosRequest(mission.id as number);
+      setActiveMissions((prev) => prev.filter((m) => m.id !== mission.id));
+      setCompletedMissions((prev) => [...prev, { ...mission, status: 'completed' }]);
+      showToast(`✅ Hoàn thành nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Lỗi hoàn thành nhiệm vụ', 'error');
+    }
   };
 
   // Format thời gian
@@ -258,55 +181,49 @@ export default function RescueDashboard() {
   };
 
   const statCards = [
-    { title: 'SOS đang chờ', value: stats.pending, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
-    { title: 'Đang xử lý', value: stats.inProgress, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { title: 'Hoàn thành', value: stats.completed, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-    { title: 'Tổng hôm nay', value: stats.totalToday, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { title: 'SOS đang chờ', value: stats.pending, icon: AlertCircle, color: 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.8)]', bg: 'bg-red-500/10 border border-red-500/20' },
+    { title: 'Đang xử lý', value: stats.inProgress, icon: Activity, color: 'text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.8)]', bg: 'bg-orange-500/10 border border-orange-500/20' },
+    { title: 'Hoàn thành', value: stats.completed, icon: CheckCircle, color: 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]', bg: 'bg-emerald-500/10 border border-emerald-500/20' },
+    { title: 'Tổng hôm nay', value: stats.totalToday, icon: Clock, color: 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]', bg: 'bg-cyan-500/10 border border-cyan-500/20' },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-blue-500/30">
       {/* Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b sticky top-0 z-10">
+      <header className="bg-slate-900/80 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.1)] border-b border-slate-800 sticky top-0 z-10">
         <div className="px-6 py-4">
           <div className="flex justify-between items-center flex-wrap gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => router.push('/')}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-slate-400 hover:text-slate-200 transition-colors bg-slate-800/50 p-2 rounded-xl hover:bg-slate-700/50 border border-slate-700/50"
                 aria-label="Quay lại trang chủ"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <span>🚨</span> Trung tâm Cứu hộ Khẩn cấp
+                <h1 className="text-2xl font-bold text-white flex items-center gap-2 tracking-tight">
+                  <span className="drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">🚨</span> TRUNG TÂM CHỈ HUY CỨU HỘ
                 </h1>
-                <p className="text-sm text-gray-500">Đội cứu hộ - Huyện Bát Xát, Lào Cai</p>
+                <p className="text-sm text-slate-400 font-medium">Huyện Bát Xát, Lào Cai - Phân hệ phản ứng nhanh</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4 pr-24">
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="p-2 text-gray-500 hover:text-gray-700 transition-colors rounded-lg hover:bg-gray-100"
+                className="p-2.5 text-cyan-400 hover:text-cyan-300 transition-colors rounded-xl bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-900/50"
                 aria-label="Làm mới"
               >
                 <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
-              <button
-                onClick={resetData}
-                className="p-2 text-gray-500 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"
-                aria-label="Reset dữ liệu"
-              >
-                <Trash2 className="h-5 w-5" />
-              </button>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-full">
-                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-green-700">Đang trực • 8 thành viên</span>
+
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-950/40 border border-emerald-900/50 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,1)]"></div>
+                <span className="text-sm font-semibold text-emerald-400 tracking-wide">TRỰC CHIẾN • 8 THÀNH VIÊN</span>
               </div>
             </div>
           </div>
@@ -319,15 +236,16 @@ export default function RescueDashboard() {
           {statCards.map((stat, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-2xl shadow-sm border hover:shadow-md transition-all duration-200 p-5"
+              className="bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-all duration-300 p-5 group relative overflow-hidden"
             >
-              <div className="flex items-center justify-between">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="flex items-center justify-between relative z-10">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">{stat.title}</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                  <p className="text-sm text-slate-400 font-medium tracking-wide uppercase">{stat.title}</p>
+                  <p className="text-4xl font-black text-white mt-2 tracking-tight">{stat.value}</p>
                 </div>
-                <div className={`${stat.bg} p-3 rounded-xl`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                <div className={`${stat.bg} p-3.5 rounded-xl`}>
+                  <stat.icon className={`h-7 w-7 ${stat.color}`} />
                 </div>
               </div>
             </div>
@@ -337,24 +255,24 @@ export default function RescueDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7">
           {/* SOS Pending List */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-              <div className="border-b px-6 py-4 bg-gray-50/50">
-                <h2 className="font-semibold text-gray-900 text-lg flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-red-500" />
+            <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-lg border border-slate-800 overflow-hidden">
+              <div className="border-b border-slate-800 px-6 py-4 bg-slate-900/80">
+                <h2 className="font-bold text-white text-lg flex items-center gap-2 tracking-wide">
+                  <AlertCircle className="h-5 w-5 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
                   DANH SÁCH SOS ĐANG CHỜ
                 </h2>
-                <p className="text-xs text-gray-500 mt-1">Sắp xếp theo mức độ khẩn cấp</p>
+                <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">Hệ thống phân loại tự động ưu tiên khẩn cấp</p>
               </div>
               <div className="p-5">
                 {loading ? (
                   <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
                   </div>
                 ) : pendingMissions.length === 0 ? (
-                  <div className="text-center py-12">
-                    <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">Không có SOS mới</h3>
-                    <p className="mt-1 text-sm text-gray-500">Tất cả nhiệm vụ đã được tiếp nhận</p>
+                  <div className="text-center py-16 bg-slate-900/30 rounded-xl border border-slate-800/50 border-dashed">
+                    <CheckCircle className="mx-auto h-14 w-14 text-emerald-500 drop-shadow-[0_0_12px_rgba(16,185,129,0.5)] opacity-80" />
+                    <h3 className="mt-4 text-base font-semibold text-white tracking-wide">HỆ THỐNG AN TOÀN</h3>
+                    <p className="mt-1 text-sm text-slate-400">Không có tín hiệu cấp cứu mới nào trong khu vực</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -363,41 +281,51 @@ export default function RescueDashboard() {
                       return (
                         <div
                           key={sos.id}
-                          className={`border-l-4 ${config.border} rounded-xl bg-white shadow-sm hover:shadow-md transition-all duration-200`}
+                          className={`relative rounded-xl bg-slate-800/40 border border-slate-700 shadow-lg hover:bg-slate-800/60 transition-all duration-300 overflow-hidden ${
+                            sos.priority === 'critical' ? 'ring-1 ring-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.15)] animate-[pulse_3s_ease-in-out_infinite]' : ''
+                          }`}
                         >
-                          <div className="p-4">
-                            <div className="flex justify-between items-start flex-wrap gap-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xl">{config.icon}</span>
-                                <h3 className="font-semibold text-gray-900">{sos.requesterName}</h3>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${config.bg} ${config.color} font-medium`}>
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${config.bg.split(' ')[0].replace('/10', '')}`}></div>
+                          <div className="p-5 pl-6">
+                            <div className="flex justify-between items-start flex-wrap gap-3">
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <span className="text-xl drop-shadow-md">{config.icon}</span>
+                                <h3 className="font-bold text-white text-lg tracking-wide">{sos.requesterName}</h3>
+                                <span className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-md ${config.bg} ${config.color} border ${config.border} font-bold`}>
                                   {config.label}
                                 </span>
-                                <span className="text-xs text-gray-400">{formatTime(sos.createdAt)}</span>
+                                <span className="text-xs text-slate-400 font-medium bg-slate-900/50 px-2 py-1 rounded-md border border-slate-700">{formatTime(sos.createdAt)}</span>
                               </div>
-                              <Button onClick={() => acceptMission(sos)} size="sm" className="bg-blue-600 hover:bg-blue-700">
-                                NHẬN
+                              <Button onClick={() => acceptMission(sos)} className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold tracking-wider shadow-[0_0_15px_rgba(8,145,178,0.4)] hover:shadow-[0_0_20px_rgba(6,182,212,0.6)] transition-all uppercase text-xs px-6 py-4 rounded-xl border border-cyan-400/30">
+                                NHẬN NHIỆM VỤ
                               </Button>
                             </div>
 
-                            <div className="mt-3 space-y-1.5">
-                              <div className="flex items-start text-sm text-gray-600">
-                                <MapPin className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
-                                <span className="flex-1">{sos.location.address}</span>
-                              </div>
-                              <div className="flex items-center text-sm text-gray-600">
-                                <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <a href={`tel:${sos.phoneNumber}`} className="hover:text-blue-600">
-                                  {sos.phoneNumber}
-                                </a>
-                              </div>
-                              {sos.peopleCount && (
-                                <div className="flex items-center text-sm text-gray-600">
-                                  <Users className="h-4 w-4 mr-2 flex-shrink-0" />
-                                  <span>{sos.peopleCount} người cần hỗ trợ</span>
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2.5">
+                                  <div className="flex items-start text-sm text-slate-300 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/50">
+                                    <MapPin className="h-4 w-4 mr-2.5 flex-shrink-0 mt-0.5 text-cyan-400" />
+                                    <span className="flex-1 leading-relaxed font-mono text-xs">{sos.location.address}</span>
+                                  </div>
+                                  <div className="flex items-center text-sm text-slate-300 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/50">
+                                    <Phone className="h-4 w-4 mr-2.5 flex-shrink-0 text-emerald-400" />
+                                    <a href={`tel:${sos.phoneNumber}`} className="hover:text-emerald-300 font-mono text-xs tracking-wider transition-colors">
+                                      {sos.phoneNumber}
+                                    </a>
+                                  </div>
                                 </div>
-                              )}
-                              <p className="text-sm text-gray-700 mt-2 pt-1 border-t border-gray-100">{sos.description}</p>
+                                
+                                <div className="flex flex-col justify-between">
+                                  {sos.peopleCount && (
+                                    <div className="flex items-center text-sm text-slate-300 bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/50 w-fit">
+                                      <Users className="h-4 w-4 mr-2.5 flex-shrink-0 text-orange-400" />
+                                      <span className="font-medium text-xs tracking-wide">SỐ LƯỢNG: {sos.peopleCount} NGƯỜI</span>
+                                    </div>
+                                  )}
+                                  <div className="mt-auto pt-2">
+                                    <p className="text-sm text-slate-400 italic line-clamp-2 pl-3 border-l-2 border-slate-700">"{sos.description}"</p>
+                                  </div>
+                                </div>
                             </div>
                           </div>
                         </div>
@@ -412,43 +340,44 @@ export default function RescueDashboard() {
           {/* Sidebar: Active + Completed + Info */}
           <div className="space-y-6">
             {/* Active Missions */}
-            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-              <div className="border-b px-5 py-4 bg-gray-50/50">
-                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <Navigation className="h-5 w-5 text-orange-500" />
-                  NHIỆM VỤ ĐANG XỬ LÝ ({activeMissions.length})
+            <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-lg border border-slate-800 overflow-hidden">
+              <div className="border-b border-slate-800 px-5 py-4 bg-slate-900/80">
+                <h2 className="font-bold text-white flex items-center gap-2 tracking-wide uppercase text-sm">
+                  <Navigation className="h-4 w-4 text-orange-500 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
+                  ĐANG XỬ LÝ ({activeMissions.length})
                 </h2>
               </div>
-              <div className="p-5">
+              <div className="p-4">
                 {activeMissions.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8 text-sm">Chưa có nhiệm vụ nào đang xử lý</p>
+                  <p className="text-center text-slate-500 py-6 text-sm font-medium">Lực lượng đang sẵn sàng</p>
                 ) : (
                   <div className="space-y-3">
                     {activeMissions.map((mission) => (
-                      <div key={mission.id} className="border rounded-xl p-3 hover:bg-gray-50 transition-colors">
-                        <div className="flex justify-between items-start gap-2">
+                      <div key={mission.id} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:border-slate-600 transition-colors relative overflow-hidden group">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
+                        <div className="flex justify-between items-start gap-2 pl-2">
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">{mission.requesterName}</p>
-                            <p className="text-xs text-gray-500 mt-1 truncate">{mission.location.address}</p>
+                            <p className="font-bold text-white tracking-wide">{mission.requesterName}</p>
+                            <p className="text-xs text-slate-400 mt-1 truncate font-mono">{mission.location.address}</p>
                           </div>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 whitespace-nowrap">
-                            Đang đến
+                          <span className="inline-flex items-center px-2 py-0.5 rounded border border-orange-500/30 text-[10px] font-bold bg-orange-500/10 text-orange-400 uppercase tracking-widest animate-pulse">
+                            Tiếp cận
                           </span>
                         </div>
-                        <div className="mt-3 flex gap-2">
+                        <div className="mt-4 flex gap-2 pl-2">
                           <Link
                             href={`/rescue/navigation/${mission.id}`}
-                            className="flex-1 flex items-center justify-center gap-1 text-blue-600 text-sm border border-blue-200 rounded-lg py-1.5 hover:bg-blue-50 transition"
+                            className="flex-1 flex items-center justify-center gap-1.5 text-cyan-400 text-xs font-bold uppercase tracking-wider border border-cyan-900 bg-cyan-950/30 rounded-lg py-2 hover:bg-cyan-900/50 hover:text-cyan-300 transition-colors shadow-[0_0_10px_rgba(8,145,178,0.1)]"
                           >
                             <Navigation className="h-3 w-3" />
-                            Điều hướng
+                            ĐIỀU HƯỚNG
                           </Link>
                           <button
                             onClick={() => completeMission(mission)}
-                            className="flex-1 flex items-center justify-center gap-1 text-green-600 text-sm border border-green-200 rounded-lg py-1.5 hover:bg-green-50 transition"
+                            className="flex-1 flex items-center justify-center gap-1.5 text-emerald-400 text-xs font-bold uppercase tracking-wider border border-emerald-900 bg-emerald-950/30 rounded-lg py-2 hover:bg-emerald-900/50 hover:text-emerald-300 transition-colors shadow-[0_0_10px_rgba(16,185,129,0.1)]"
                           >
                             <CheckCircle className="h-3 w-3" />
-                            Hoàn thành
+                            HOÀN TẤT
                           </button>
                         </div>
                       </div>
@@ -460,18 +389,18 @@ export default function RescueDashboard() {
 
             {/* Completed Missions (gọn) */}
             {completedMissions.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                <div className="border-b px-5 py-3 bg-gray-50/50">
-                  <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+              <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-lg border border-slate-800 overflow-hidden">
+                <div className="border-b border-slate-800 px-5 py-3 bg-slate-900/80">
+                  <h2 className="font-bold text-slate-300 text-xs flex items-center gap-2 uppercase tracking-widest">
+                    <CheckCircle className="h-4 w-4 text-emerald-500" />
                     ĐÃ HOÀN THÀNH ({completedMissions.length})
                   </h2>
                 </div>
-                <div className="p-3 max-h-48 overflow-y-auto">
+                <div className="p-2 max-h-48 overflow-y-auto custom-scrollbar">
                   {completedMissions.map((m) => (
-                    <div key={m.id} className="text-sm py-2 border-b last:border-0 flex justify-between">
-                      <span className="font-medium">{m.requesterName}</span>
-                      <span className="text-gray-400 text-xs">{formatTime(m.createdAt)}</span>
+                    <div key={m.id} className="text-sm py-2.5 px-3 border-b border-slate-800/50 last:border-0 flex justify-between items-center hover:bg-slate-800/30 rounded-lg transition-colors">
+                      <span className="font-medium text-slate-300">{m.requesterName}</span>
+                      <span className="text-slate-500 text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded">{formatTime(m.createdAt)}</span>
                     </div>
                   ))}
                 </div>
@@ -479,27 +408,34 @@ export default function RescueDashboard() {
             )}
 
             {/* Info Card */}
-            <div className="bg-blue-50 rounded-2xl p-5 border border-blue-200">
-              <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <div className="bg-indigo-950/30 rounded-2xl p-5 border border-indigo-900/50 relative overflow-hidden">
+              <div className="absolute -right-4 -top-4 opacity-10">
+                <Shield className="w-24 h-24 text-indigo-400" />
+              </div>
+              <h3 className="font-bold text-indigo-300 mb-3 flex items-center gap-2 tracking-wide uppercase text-sm relative z-10">
                 <Shield className="h-4 w-4" />
-                Lưu ý khi tác nghiệp
+                Quy trình tác chiến
               </h3>
-              <ul className="text-sm text-blue-800 space-y-2">
-                <li className="flex items-start gap-2">• Ưu tiên xử lý SOS mức độ 🔴 trước</li>
-                <li className="flex items-start gap-2">• Kiểm tra tuyến đường an toàn trước khi di chuyển</li>
-                <li className="flex items-start gap-2">• Cập nhật trạng thái thường xuyên qua ứng dụng</li>
-                <li className="flex items-start gap-2">• Giữ liên lạc với nạn nhân qua số điện thoại</li>
+              <ul className="text-xs text-indigo-200/80 space-y-2.5 relative z-10 font-medium">
+                <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">■</span> Ưu tiên xử lý tín hiệu cấp độ ĐỎ</li>
+                <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">■</span> Xác minh tọa độ vệ tinh trước khi di chuyển</li>
+                <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">■</span> Báo cáo hiện trường liên tục (Field Updates)</li>
+                <li className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">■</span> Kích hoạt bộ đàm khi mất sóng GPS</li>
               </ul>
             </div>
 
             {/* Hotline */}
-            <div className="bg-red-50 rounded-2xl p-5 border border-red-200">
-              <h3 className="font-semibold text-red-900 mb-2 flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                Đường dây nóng
+            <div className="bg-red-950/30 rounded-2xl p-5 border border-red-900/50 text-center relative overflow-hidden group hover:bg-red-950/40 transition-colors cursor-pointer">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-900/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <Phone className="h-6 w-6 text-red-500 mx-auto mb-2 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" />
+              <h3 className="font-bold text-red-400 text-xs uppercase tracking-widest mb-1">
+                Kênh liên lạc khẩn
               </h3>
-              <p className="text-2xl font-bold text-red-700">1900 1234</p>
-              <p className="text-xs text-red-600 mt-1">Hỗ trợ 24/7</p>
+              <p className="text-3xl font-black text-white tracking-tighter drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]">1900<span className="text-red-500">.</span>1234</p>
+              <div className="mt-3 flex items-center justify-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <p className="text-[10px] text-red-300/70 font-bold uppercase tracking-widest">Trực ban vệ tinh 24/7</p>
+              </div>
             </div>
           </div>
         </div>

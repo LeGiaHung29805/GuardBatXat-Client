@@ -16,6 +16,20 @@ export default function GlobalUI() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userRole, setUserRole] = useState<string>("GUEST");
     const [userName, setUserName] = useState<string>("");
+    const [showGreeting, setShowGreeting] = useState(false);
+
+    // Tự động ẩn lời chào sau 3 giây
+    useEffect(() => {
+        if (isLoggedIn && userName) {
+            setShowGreeting(true);
+            const timer = setTimeout(() => {
+                setShowGreeting(false);
+            }, 3000);
+            return () => clearTimeout(timer);
+        } else {
+            setShowGreeting(false);
+        }
+    }, [isLoggedIn, userName]);
 
     const [formData, setFormData] = useState({
         identifier: "",
@@ -71,9 +85,22 @@ export default function GlobalUI() {
                 const profileRes = await ApiClient.getMyProfile();
                 setIsLoggedIn(true);
                 setUserName(profileRes.data.fullName);
-                setUserRole(profileRes.data.roleName);
+                const roleName = profileRes.data.roleName;
+                setUserRole(roleName);
 
                 setIsAuthModalOpen(false);
+                
+                // Chuyển hướng theo Role sau khi đăng nhập thành công
+                if (roleName === "RESCUE_TEAM") {
+                    router.push("/rescue");
+                } else if (roleName === "ADMIN") {
+                    router.push("/admin");
+                } else {
+                    // Nếu đang ở trang chủ, có thể chuyển sang trang sơ tán
+                    if (window.location.pathname === "/") {
+                        router.push("/citizen/evacuation");
+                    }
+                }
             } else {
                 await ApiClient.register({
                     emailOrPhone: formData.emailOrPhone,
@@ -97,16 +124,20 @@ export default function GlobalUI() {
         setIsLoggedIn(false);
         setUserRole("GUEST");
         setUserName("");
-        router.refresh();
+        
+        // Thoát về trang chủ (màn hình lúc mới chạy) thay vì chỉ refresh tại chỗ
+        window.location.href = "/";
     };
     return (
         <>
             <div className="fixed top-4 right-4 z-50 flex items-center gap-4">
                 {isLoggedIn ? (
                     <div className="flex items-center gap-3 bg-slate-900/80 backdrop-blur border border-slate-700 p-2 rounded-full shadow-lg">
-                        <span className="text-emerald-400 text-sm font-medium px-2">
-                            Chào, {userName}
-                        </span>
+                        {showGreeting && (
+                            <span className="text-emerald-400 text-sm font-medium px-2 transition-all duration-500 animate-in fade-in slide-in-from-right-2">
+                                Chào, {userName === "Doi cuu ho Bat Xat" ? "Đội cứu hộ Bát Xát" : userName}
+                            </span>
+                        )}
                         <button
                             onClick={handleLogout}
                             className="bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white text-xs py-1 px-3 rounded-full transition-colors"

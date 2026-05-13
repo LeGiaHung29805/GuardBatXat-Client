@@ -45,81 +45,14 @@ interface MissionData {
 // Điểm xuất phát mặc định (UBND thị trấn Bát Xát)
 const DEFAULT_START_POS: [number, number] = [22.5284, 103.9998];
 
-const ALL_MISSIONS: MissionData[] = [
-  {
-    id: 'SOS001',
-    requesterName: 'Nguyễn Văn A',
-    location: { lat: 22.538547, lng: 103.847598, address: 'Thôn Nậm Pung, Xã Bát Xát' },
-    startPos: [22.539768, 103.845484],
-    phoneNumber: '0909123456',
-    peopleCount: 3,
-    description: '3 người mắc kẹt trên mái nhà, nước dâng nhanh',
-    priority: 'high',
-  },
-  {
-    id: 'SOS002',
-    requesterName: 'Trần Thị B',
-    location: { lat: 22.5248, lng: 103.9945, address: 'Thôn Làng Mô, Xã Bát Xát' },
-    phoneNumber: '0909234567',
-    peopleCount: 2,
-    description: 'Nước ngập 1.5m, cần di dời 2 người già',
-    priority: 'medium',
-  },
-  {
-    id: 'SOS003',
-    requesterName: 'Lê Văn C',
-    location: { lat: 22.567763, lng: 103.832551, address: 'Thôn Phìn Ngan, Xã Bát Xát' },
-    startPos: [22.569019, 103.835669],
-    phoneNumber: '0909345678',
-    peopleCount: 4,
-    description: 'Đất sạt nhẹ sau nhà, cần hỗ trợ di dời',
-    priority: 'medium',
-  },
-  {
-    id: 'SOS004',
-    requesterName: 'Phạm Thị D',
-    location: { lat: 22.5291, lng: 103.9978, address: 'Thôn Nậm Chạc, Xã Bát Xát' },
-    phoneNumber: '0909456789',
-    peopleCount: 1,
-    description: 'Cụ già 85 tuổi mắc kẹt, nước ngập 1.2m',
-    priority: 'high',
-  },
-  {
-    id: 'SOS005',
-    requesterName: 'Hoàng Văn E',
-    location: { lat: 22.530741, lng: 103.899260, address: 'Thôn Thản Mả, Xã Bát Xát' },
-    startPos: [22.532702, 103.895773],
-    phoneNumber: '0909567890',
-    peopleCount: 5,
-    description: '5 người trên nóc nhà, nước dâng rất nhanh',
-    priority: 'critical',
-  },
-  {
-    id: 'SOS006',
-    requesterName: 'Đỗ Thị F',
-    location: { lat: 22.5205, lng: 103.9895, address: 'Thôn Cốc Ly, Xã Bát Xát' },
-    phoneNumber: '0909678901',
-    peopleCount: 2,
-    description: 'Đã di dời thành công, cần kiểm tra lại',
-    priority: 'low',
-  },
-  {
-    id: 'SOS007',
-    requesterName: 'Bùi Văn G',
-    location: { lat: 22.5268, lng: 104.0045, address: 'Thôn Séo Mý, Xã Bát Xát' },
-    phoneNumber: '0909789012',
-    peopleCount: 3,
-    description: 'Nước rút, hỗ trợ dọn dẹp',
-    priority: 'low',
-  },
-];
-
-const priorityConfig = {
-  critical: { label: 'Khẩn cấp', className: 'bg-red-50 text-red-700 border border-red-200' },
-  high: { label: 'Cao', className: 'bg-orange-50 text-orange-700 border border-orange-200' },
-  medium: { label: 'Trung bình', className: 'bg-yellow-50 text-yellow-700 border border-yellow-200' },
-  low: { label: 'Thấp', className: 'bg-slate-100 text-slate-600 border border-slate-200' },
+const priorityConfig: Record<string, { label: string; icon: string; color: string; bg: string; border: string }> = {
+  critical: { label: 'Khẩn cấp', icon: '🔴', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
+  high: { label: 'Cao', icon: '🟠', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30' },
+  medium: { label: 'Trung bình', icon: '🟡', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30' },
+  low: { label: 'Thấp', icon: '⚪', color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30' },
 };
+
+import { ApiClient } from '@/lib/ApiClient';
 
 export default function RescueNavigation() {
   const params = useParams();
@@ -134,12 +67,56 @@ export default function RescueNavigation() {
 
   useEffect(() => {
     setMounted(true);
-    const found = ALL_MISSIONS.find((m) => m.id === missionId);
-    if (found) setMission(found);
-    else router.push('/rescue');
+    
+    const fetchMissionAndUpdates = async () => {
+      try {
+        const res = await ApiClient.getRescueSosRequests();
+        const allSos: any[] = res.data || [];
+        const found = allSos.find((m: any) => String(m.id) === missionId);
+        
+        if (found) {
+          setMission({
+            id: String(found.id),
+            requesterName: found.senderName || 'Người dân',
+            location: {
+              lat: found.gpsLat,
+              lng: found.gpsLng,
+              address: `Lat: ${found.gpsLat}, Lng: ${found.gpsLng}`
+            },
+            phoneNumber: found.senderPhone,
+            peopleCount: found.totalPeople || 1,
+            description: found.message || '',
+            priority: 'high', // Mặc định là High vì backend chưa có trường priority
+          });
+        } else {
+          router.push('/rescue');
+          return;
+        }
+
+        // Fetch updates
+        const updatesRes = await ApiClient.getSosFieldUpdates(missionId);
+        if (updatesRes.data && updatesRes.data.length > 0) {
+           const mappedUpdates: FieldUpdateData[] = updatesRes.data.map((log: any) => ({
+             missionId: String(log.missionId),
+             status: log.status,
+             message: log.message,
+             images: log.images || undefined,
+             location: log.lat && log.lng ? { lat: log.lat, lng: log.lng } : undefined,
+             timestamp: new Date(log.timestamp),
+           }));
+           setUpdates(mappedUpdates);
+           setMissionStarted(true);
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu điều hướng:", error);
+        router.push('/rescue');
+      }
+    };
+    
+    fetchMissionAndUpdates();
   }, [missionId, router]);
 
-  const startMission = () => {
+  const startMission = async () => {
     setMissionStarted(true);
     const initialUpdate: FieldUpdateData = {
       missionId,
@@ -147,11 +124,38 @@ export default function RescueNavigation() {
       message: 'Đội cứu hộ đã xuất phát, đang di chuyển đến hiện trường',
       timestamp: new Date(),
     };
+    // Tối ưu UI: Cập nhật state ngay lập tức
     setUpdates([initialUpdate]);
+    
+    try {
+      await ApiClient.sendSosFieldUpdate(missionId, {
+        status: initialUpdate.status,
+        message: initialUpdate.message,
+        lat: DEFAULT_START_POS[0],
+        lng: DEFAULT_START_POS[1],
+        images: []
+      });
+    } catch (e) {
+      console.error("Lỗi gửi cập nhật:", e);
+    }
   };
 
-  const handleFieldUpdate = (update: FieldUpdateData) => {
+  const handleFieldUpdate = async (update: FieldUpdateData) => {
+    // Tối ưu UI: Cập nhật state ngay lập tức (lên đầu)
     setUpdates((prev) => [update, ...prev]);
+    
+    try {
+      await ApiClient.sendSosFieldUpdate(missionId, {
+        status: update.status,
+        message: update.message,
+        lat: update.location?.lat,
+        lng: update.location?.lng,
+        images: update.images || []
+      });
+    } catch (e) {
+      console.error("Lỗi gửi cập nhật:", e);
+    }
+    
     if (update.status === 'completed') {
       alert('🎉 Nhiệm vụ hoàn thành! Cảm ơn đội cứu hộ.');
     }
@@ -163,10 +167,10 @@ export default function RescueNavigation() {
 
   if (!mounted || !mission) {
     return (
-      <div className="flex justify-center items-center h-screen bg-slate-50">
+      <div className="flex justify-center items-center h-screen bg-slate-950">
         <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent" />
-          <p className="text-sm text-slate-500">Đang tải nhiệm vụ...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-cyan-500 border-t-transparent shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
+          <p className="text-sm text-cyan-400 animate-pulse tracking-widest uppercase font-semibold">Đang đồng bộ dữ liệu vệ tinh...</p>
         </div>
       </div>
     );
@@ -178,106 +182,114 @@ export default function RescueNavigation() {
   const priority = priorityConfig[mission.priority] ?? priorityConfig.medium;
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
+    <div className="h-screen flex flex-col bg-slate-950 font-sans selection:bg-cyan-500/30">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+      <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 transition-colors"
+          className="flex items-center gap-1.5 text-slate-400 hover:text-cyan-400 transition-colors bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-cyan-900/50 px-3 py-1.5 rounded-lg"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span className="text-sm font-medium">Quay lại</span>
+          <span className="text-sm font-bold uppercase tracking-wider">Trở lại</span>
         </button>
 
         <div className="text-center">
-          <h1 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5 justify-center">
-            <Navigation className="h-4 w-4 text-blue-600" />
-            Điều hướng cứu hộ
+          <h1 className="text-sm font-bold text-white flex items-center gap-1.5 justify-center uppercase tracking-widest drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
+            <Navigation className="h-4 w-4 text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]" />
+            TỌA ĐỘ MỤC TIÊU
           </h1>
-          <div className="flex items-center justify-center gap-2 mt-0.5">
-            <span className="text-xs text-slate-400">#{missionId}</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priority.className}`}>
+          <div className="flex items-center justify-center gap-2 mt-1">
+            <span className="text-xs text-slate-500 font-mono tracking-wider">#{missionId}</span>
+            <span className={`text-[10px] uppercase px-2 py-0.5 rounded border font-bold tracking-widest ${priority.bg.replace('/10', '/20')} ${priority.color} ${priority.border}`}>
               {priority.label}
             </span>
           </div>
         </div>
 
-        <div className="w-20" />
+        <div className="w-24" /> {/* Spacer để cân bằng Header */}
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Map */}
-        <div className="flex-1 relative min-h-[280px] lg:min-h-0">
+        <div className="flex-1 relative min-h-[280px] lg:min-h-0 border-r border-slate-800">
           <RescueMapWithRouting startPos={startPos} destPos={destPos} onRouteFound={handleRouteFound} />
+          {/* Lớp phủ shadow cho Map để blend với viền tối */}
+          <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_50px_rgba(2,6,23,0.5)] z-[400]"></div>
         </div>
 
         {/* Sidebar */}
-        <div className="lg:w-[380px] bg-white border-l border-slate-200 overflow-y-auto">
-          <div className="p-5 space-y-4">
+        <div className="lg:w-[400px] bg-slate-900/95 overflow-y-auto custom-scrollbar">
+          <div className="p-5 space-y-5">
             {/* Thông tin người báo */}
             <section>
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                Thông tin nhiệm vụ
+              <h2 className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span>
+                Dữ liệu Nhiệm vụ
               </h2>
-              <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-900">{mission.requesterName}</span>
+              <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 space-y-3 relative overflow-hidden group hover:border-slate-600 transition-colors">
+                <div className="absolute -right-6 -top-6 opacity-5">
+                  <Users className="w-24 h-24 text-white" />
+                </div>
+                <div className="flex items-center justify-between relative z-10">
+                  <span className="text-sm font-bold text-white tracking-wide">{mission.requesterName}</span>
                   <a
                     href={`tel:${mission.phoneNumber}`}
-                    className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-mono tracking-wider bg-emerald-950/30 px-2.5 py-1 rounded-md border border-emerald-900/50 hover:shadow-[0_0_10px_rgba(16,185,129,0.2)] transition-all"
                   >
-                    <Phone className="h-3.5 w-3.5" />
+                    <Phone className="h-3 w-3" />
                     {mission.phoneNumber}
                   </a>
                 </div>
-                <div className="flex items-start gap-2 text-sm text-slate-600">
-                  <MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <span>{mission.location.address}</span>
+                <div className="flex items-start gap-2.5 text-sm text-slate-300 relative z-10 bg-slate-900/40 p-2 rounded-lg border border-slate-800">
+                  <MapPin className="h-4 w-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                  <span className="font-mono text-xs leading-relaxed">{mission.location.address}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Users className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                  <span><span className="font-semibold text-slate-900">{mission.peopleCount}</span> người cần hỗ trợ</span>
+                <div className="flex items-center gap-2.5 text-sm text-slate-300 relative z-10 bg-slate-900/40 p-2 rounded-lg border border-slate-800">
+                  <Users className="h-4 w-4 text-cyan-400 flex-shrink-0" />
+                  <span className="text-xs uppercase tracking-wider font-medium"><span className="font-bold text-white text-sm">{mission.peopleCount}</span> Nạn nhân</span>
                 </div>
-                <div className="pt-2 border-t border-slate-200">
-                  <p className="text-sm text-slate-600 leading-relaxed">{mission.description}</p>
+                <div className="pt-3 border-t border-slate-700/50 relative z-10">
+                  <p className="text-xs text-slate-400 leading-relaxed italic border-l-2 border-slate-600 pl-2">"{mission.description}"</p>
                 </div>
               </div>
             </section>
 
             {/* Thông tin tuyến đường */}
-            <div className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-              <svg className="h-5 w-5 text-slate-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            <div className="flex items-center gap-3 px-4 py-3 bg-indigo-950/20 border border-indigo-900/50 rounded-xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+              <svg className="h-5 w-5 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM19 17H5v-5h14v5z"/>
                 <circle cx="7.5" cy="14.5" r="1.5"/>
                 <circle cx="16.5" cy="14.5" r="1.5"/>
               </svg>
 
               {routeInfo ? (
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-lg font-bold text-slate-900">{routeInfo.duration} phút</span>
-                  <span className="text-sm text-slate-400">·</span>
-                  <span className="text-sm text-slate-500">{routeInfo.distance} km</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-black text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]">{routeInfo.duration} <span className="text-xs text-slate-400 font-medium">PHÚT</span></span>
+                  <span className="text-sm text-slate-500">·</span>
+                  <span className="text-sm text-indigo-300 font-mono tracking-wider">{routeInfo.distance} KM</span>
                 </div>
               ) : (
-                <span className="text-sm text-slate-400 animate-pulse">Đang tính tuyến đường...</span>
+                <span className="text-xs font-medium text-indigo-400 animate-pulse tracking-widest uppercase">Đang quét tuyến đường...</span>
               )}
 
               {routeInfo && (
-                <span className="ml-auto text-xs font-medium px-2 py-1 bg-blue-600 text-white rounded-lg">
-                  Nhanh nhất
+                <span className="ml-auto text-[10px] font-bold px-2 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded shadow-[0_0_8px_rgba(99,102,241,0.2)] uppercase tracking-widest">
+                  TỐI ƯU
                 </span>
               )}
             </div>
 
             {/* Cảnh báo */}
             <section>
-              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-amber-900 mb-1.5">Cảnh báo trên tuyến</p>
-                  <ul className="space-y-1">
-                    <li className="text-sm text-amber-700">Đường đèo: nguy cơ sạt lở thấp, chú ý quan sát</li>
-                    <li className="text-sm text-amber-700">Đường trơn trượt sau mưa, giảm tốc độ</li>
+              <div className="flex items-start gap-3 bg-orange-950/30 border border-orange-900/50 rounded-xl p-4 relative overflow-hidden group hover:bg-orange-950/40 transition-colors">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-orange-900/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5 drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                <div className="relative z-10">
+                  <p className="text-[10px] font-bold text-orange-400 mb-1.5 uppercase tracking-widest">Cảnh báo Địa hình</p>
+                  <ul className="space-y-1.5">
+                    <li className="text-xs text-orange-200/80 font-medium flex items-start gap-1.5"><span className="text-orange-500 mt-0.5">■</span> Đường đèo: nguy cơ sạt lở thấp, chú ý quan sát</li>
+                    <li className="text-xs text-orange-200/80 font-medium flex items-start gap-1.5"><span className="text-orange-500 mt-0.5">■</span> Đường trơn trượt sau mưa, giảm tốc độ</li>
                   </ul>
                 </div>
               </div>
@@ -287,14 +299,14 @@ export default function RescueNavigation() {
             {!missionStarted ? (
               <Button
                 onClick={startMission}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11 rounded-xl font-semibold text-sm shadow-sm"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white h-14 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all border border-emerald-400/50 uppercase tracking-widest"
                 size="lg"
               >
-                <Navigation className="h-4 w-4 mr-2" />
-                Bắt đầu di chuyển
+                <Navigation className="h-5 w-5 mr-2 drop-shadow-md" />
+                BẮT ĐẦU DI CHUYỂN
               </Button>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <FieldUpdate missionId={missionId} onUpdateSent={handleFieldUpdate} />
                 <UpdateTimeline updates={updates} />
               </div>

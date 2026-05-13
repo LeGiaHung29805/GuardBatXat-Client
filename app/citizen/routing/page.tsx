@@ -24,21 +24,27 @@ export default function SafeRoutingPage() {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // Cập nhật state với tọa độ thật
-          setStartLoc({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
+          // Kiểm tra xem user có ở gần Bát Xát không (vĩ độ ~22.6)
+          // Nếu ở quá xa (ví dụ: Hà Nội), ta sẽ giả lập vị trí ở Bát Xát để test hệ thống
+          let lat = position.coords.latitude;
+          let lng = position.coords.longitude;
+          
+          if (lat < 22.0 || lat > 23.0 || lng < 103.0 || lng > 105.0) {
+              console.warn("Vị trí thực tế quá xa Bát Xát, sử dụng vị trí giả lập tại UBND Bát Xát để test lộ trình.");
+              lat = 22.6105;
+              lng = 103.8012;
+          }
+          
+          setStartLoc({ lat, lng });
         },
         (error) => {
           console.error("Lỗi lấy vị trí GPS:", error);
-          alert(
-            "Không thể tự động lấy vị trí của bạn. Vui lòng cấp quyền truy cập vị trí trên trình duyệt!",
-          );
+          // Fallback location
+          setStartLoc({ lat: 22.6105, lng: 103.8012 });
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 5000,
           maximumAge: 0,
         },
       );
@@ -65,8 +71,8 @@ export default function SafeRoutingPage() {
         endLng: destLoc.lng,
       });
 
-      if (res.code === 200 && res.data.route_coordinates) {
-        setRoute(res.data.route_coordinates);
+      if (res.code === 200 && (res.data.pathPoints || res.data.route_coordinates)) {
+        setRoute(res.data.pathPoints || res.data.route_coordinates);
         setMessage("Đã tìm thấy lộ trình an toàn nhất né vùng thiên tai!");
       }
     } catch (error: any) {
