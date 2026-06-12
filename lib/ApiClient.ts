@@ -288,4 +288,5 @@ export const ApiClient = {
     );
     return response.data;
   },
+  getSystemHealth: () => axiosInstance.get("/admin/health"),
 };

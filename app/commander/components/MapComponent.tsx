@@ -54,7 +54,7 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
       <MapContainer center={center} zoom={12} className="h-full w-full">
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; OpenStreetMap'
+          attribution="&copy; OpenStreetMap"
         />
 
         {/* HIỂN THỊ LỚP BẢN ĐỒ DỰA VÀO NÚT BẤM */}
@@ -77,7 +77,7 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
           />
         )}
 
-        {mapMode === 'points' && (
+        {mapMode === "points" && (
           <>
             {floodPoints.map((pt, idx) => {
               const geo = JSON.parse(pt.geojson);
@@ -86,7 +86,11 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
                   key={`flood-${idx}`}
                   center={[geo.coordinates[1], geo.coordinates[0]]}
                   radius={8}
-                  pathOptions={{ fillColor: "#3b82f6", color: "#60a5fa", fillOpacity: 0.7 }}
+                  pathOptions={{
+                    fillColor: "#3b82f6",
+                    color: "#60a5fa",
+                    fillOpacity: 0.7,
+                  }}
                 >
                   <Popup className="text-gray-900 font-sans">
                     <div className="flex items-center gap-1 mb-1 text-blue-700">
@@ -108,7 +112,11 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
                   key={`land-${idx}`}
                   center={[geo.coordinates[1], geo.coordinates[0]]}
                   radius={8}
-                  pathOptions={{ fillColor: "#ef4444", color: "#f87171", fillOpacity: 0.9 }}
+                  pathOptions={{
+                    fillColor: "#ef4444",
+                    color: "#f87171",
+                    fillOpacity: 0.9,
+                  }}
                 >
                   <Popup className="text-gray-900 font-sans">
                     <div className="flex items-center gap-1 mb-1 text-red-600">
