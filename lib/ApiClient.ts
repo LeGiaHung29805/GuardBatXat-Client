@@ -66,7 +66,7 @@ axiosInstance.interceptors.response.use(
         }
       }
     }
-    
+
     // Xác định error message
     let errorMessage = "Lỗi kết nối máy chủ";
     if (error.response?.data?.message) {
@@ -76,14 +76,14 @@ axiosInstance.interceptors.response.use(
     } else if (error.response?.status >= 500) {
       errorMessage = `Lỗi máy chủ (${error.response.status}): ${error.response?.data?.message || "Vui lòng thử lại sau"}`;
     }
-    
+
     console.error("[API Error]", {
       status: error.response?.status,
       message: errorMessage,
       url: error.config?.url,
       data: error.response?.data,
     });
-    
+
     return Promise.reject(new Error(errorMessage));
   },
 );
@@ -140,7 +140,7 @@ export const ApiClient = {
     const response = await axiosInstance.post("/v1/routing/safe-route", data);
     return response.data;
   },
-  
+
   findSafeShelters: async (
     data: SafeShelterRequest,
   ): Promise<ApiResponse<SafeShelterResponseData>> => {
