@@ -1,5 +1,5 @@
 export type RiskLevel = "low" | "medium" | "high" | "critical";
-export type ScenarioLevel = "80m" | "82m" | "83.5m";
+export type ScenarioLevel = string;
 
 export interface HeatmapData {
   type: "flood" | "landslide";

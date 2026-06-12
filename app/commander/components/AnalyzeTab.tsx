@@ -20,6 +20,7 @@ import {
 } from "lucide-react"; // Import thư viện Icon
 
 interface Props {
+  scenarios: string[];
   damageStats: DamageStats;
   selectedScenario?: string;
 }

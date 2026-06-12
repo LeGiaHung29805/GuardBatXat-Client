@@ -35,8 +35,12 @@ class ApiService {
     const json = await response.json();
 
     // TUYỆT CHIÊU ĐỒNG BỘ BACKEND MỚI: Tự động "bóc vỏ" ApiResponse
-    if (json && json.code === 200 && json.hasOwnProperty('data')) {
-        return json.data; // Chỉ trả về cái ruột bên trong cho các Component dùng
+    if (json && json.code === 200) {
+        if (json.hasOwnProperty('data')) {
+            return json.data; // Chỉ trả về cái ruột bên trong cho các Component dùng
+        } else if (json.message) {
+            return json.message; // Trả về text message để tránh lỗi React child object
+        }
     }
 
     return json;
@@ -45,6 +49,10 @@ class ApiService {
   // ==================== DASHBOARD & THỐNG KÊ ====================
   async getDashboardStats(level: string) {
     return this.fetchWithAuth(`/commander/statistics/dashboard?level=${level}`);
+  }
+
+  async getAvailableScenarios() {
+    return this.fetchWithAuth(`/commander/statistics/scenarios`);
   }
 
   // ==================== HEATMAP (Bản đồ số GIS) ====================
@@ -74,8 +82,8 @@ class ApiService {
   }
 
   // ==================== ĐIỀU HÀNH SƠ TÁN ====================
-  async activateEvacuation(level: string) {
-    return this.fetchWithAuth(`/commander/evacuation/activate?level=${level}`, {
+  async activateEvacuation(level: string, radius: number = 1000) {
+    return this.fetchWithAuth(`/commander/evacuation/activate?level=${level}&radius=${radius}`, {
       method: "POST",
     });
   }

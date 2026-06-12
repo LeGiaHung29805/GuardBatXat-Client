@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type { ScenarioLevel, DamageStats } from "../types";
 import { 
   Siren, 
@@ -11,9 +11,10 @@ import {
 } from "lucide-react"; // Import thư viện Icon
 
 interface Props {
+  scenarios: ScenarioLevel[];
   selectedScenario: ScenarioLevel;
   damageStats: DamageStats;
-  onActivate: () => void;
+  onActivate: (radius: number) => void;
 }
 
 export default function EvacuateTab({
@@ -21,6 +22,8 @@ export default function EvacuateTab({
   damageStats,
   onActivate,
 }: Props) {
+  const [radius, setRadius] = useState<number>(1000);
+
   return (
     <div className="space-y-6">
       {/* TIÊU ĐỀ CHÍNH */}
@@ -74,9 +77,30 @@ export default function EvacuateTab({
           </div>
         </div>
 
+        {/* CÀI ĐẶT BÁN KÍNH CẢNH BÁO */}
+        <div className="mb-6 bg-gray-900/50 p-5 rounded-xl border border-gray-700">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
+            Phạm vi phát cảnh báo sơ tán (bán kính theo tâm vùng ngập)
+          </label>
+          <div className="flex items-center gap-4">
+            <input 
+              type="range" 
+              min="500" 
+              max="10000" 
+              step="500"
+              value={radius}
+              onChange={(e) => setRadius(Number(e.target.value))}
+              className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+            />
+            <span className="font-bold text-xl text-red-400 min-w-[80px] text-right">
+              {radius >= 1000 ? `${radius/1000} km` : `${radius} m`}
+            </span>
+          </div>
+        </div>
+
         {/* NÚT KÍCH HOẠT LỚN */}
         <button
-          onClick={onActivate}
+          onClick={() => onActivate(radius)}
           className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl text-lg transition-all shadow-xl hover:shadow-red-900/50 hover:scale-[1.02] flex items-center justify-center gap-3"
         >
           <Siren size={24} />

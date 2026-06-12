@@ -45,6 +45,8 @@ export interface ShelterDestination {
   name: string;
   lat: number;
   lng: number;
+  max_capacity: number;
+  current_occupancy: number;
   available_capacity: number;
 }
 

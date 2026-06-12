@@ -7,13 +7,14 @@ import { Map, Ruler, Droplets, AlertTriangle } from "lucide-react"; // Import th
 const MapComponent = dynamic(() => import("./MapComponent"), { ssr: false });
 
 interface Props {
+  scenarios: ScenarioLevel[];
   selectedScenario: ScenarioLevel;
   onScenarioChange: (scenario: ScenarioLevel) => void;
   floodData: any[]; // Dữ liệu thật từ DB
   landslideData: any[]; // Dữ liệu thật từ DB
 }
 
-export default function MonitorTab({ selectedScenario, onScenarioChange, floodData, landslideData }: Props) {
+export default function MonitorTab({ scenarios, selectedScenario, onScenarioChange, floodData, landslideData }: Props) {
   return (
     <div className="space-y-6">
       {/* TIÊU ĐỀ CHÍNH */}
@@ -50,12 +51,12 @@ export default function MonitorTab({ selectedScenario, onScenarioChange, floodDa
            <Ruler size={24} className="text-cyan-400" /> 
            Kịch bản Mực Nước
          </h3>
-         <div className="grid grid-cols-3 gap-4">
-          {(["80m", "82m", "83.5m"] as ScenarioLevel[]).map((level) => (
+         <div className="flex flex-wrap gap-4">
+          {scenarios.map((level) => (
             <button
               key={level}
               onClick={() => onScenarioChange(level)}
-              className={`p-6 rounded-xl border-2 transition-all ${
+              className={`flex-1 min-w-[120px] p-6 rounded-xl border-2 transition-all ${
                 selectedScenario === level
                   ? "bg-blue-600 border-blue-400 shadow-xl scale-[1.02]"
                   : "bg-gray-700 border-gray-600 hover:bg-gray-600"

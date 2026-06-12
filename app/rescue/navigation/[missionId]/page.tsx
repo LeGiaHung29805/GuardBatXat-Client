@@ -74,6 +74,18 @@ export default function RescueNavigation() {
         const allSos: any[] = res.data || [];
         const found = allSos.find((m: any) => String(m.id) === missionId);
         
+        let initialStartPos: [number, number] | undefined = undefined;
+        try {
+          if (navigator.geolocation) {
+             const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+               navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+             });
+             initialStartPos = [pos.coords.latitude, pos.coords.longitude];
+          }
+        } catch(e) {
+          console.warn("Không lấy được GPS thực tế, dùng mặc định:", e);
+        }
+
         if (found) {
           setMission({
             id: String(found.id),
@@ -83,6 +95,7 @@ export default function RescueNavigation() {
               lng: found.gpsLng,
               address: `Lat: ${found.gpsLat}, Lng: ${found.gpsLng}`
             },
+            startPos: initialStartPos,
             phoneNumber: found.senderPhone,
             peopleCount: found.totalPeople || 1,
             description: found.message || '',
@@ -97,12 +110,12 @@ export default function RescueNavigation() {
         const updatesRes = await ApiClient.getSosFieldUpdates(missionId);
         if (updatesRes.data && updatesRes.data.length > 0) {
            const mappedUpdates: FieldUpdateData[] = updatesRes.data.map((log: any) => ({
-             missionId: String(log.missionId),
+             missionId: String(missionId),
              status: log.status,
              message: log.message,
-             images: log.images || undefined,
-             location: log.lat && log.lng ? { lat: log.lat, lng: log.lng } : undefined,
-             timestamp: new Date(log.timestamp),
+             images: log.images ? log.images.split(',') : undefined,
+             location: log.gpsLat && log.gpsLng ? { lat: log.gpsLat, lng: log.gpsLng } : undefined,
+             timestamp: new Date(log.createdAt),
            }));
            setUpdates(mappedUpdates);
            setMissionStarted(true);

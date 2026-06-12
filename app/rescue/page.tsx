@@ -141,8 +141,8 @@ export default function RescueDashboard() {
 
       // Cập nhật danh sách pending động
       const newSOS: SOSRequest = {
-        id: `SOS_NEW_${Date.now()}`,
-        requesterName: data.senderPhone || 'Ẩn danh',
+        id: data.id || `SOS_NEW_${Date.now()}`,
+        requesterName: data.senderName || data.senderPhone || 'Ẩn danh',
         location: {
           lat: data.lat,
           lng: data.lng,
@@ -231,7 +231,7 @@ export default function RescueDashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-blue-500/30">
       {/* Toast */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {/* {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />} */}
 
       {/* Header */}
       <header className="bg-slate-900/80 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.1)] border-b border-slate-800 sticky top-0 z-10">

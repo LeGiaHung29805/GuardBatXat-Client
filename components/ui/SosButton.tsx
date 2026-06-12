@@ -8,7 +8,7 @@ export default function SosButton() {
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    
+
     // Form states
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
@@ -16,8 +16,8 @@ export default function SosButton() {
     const [elderlyCount, setElderlyCount] = useState<number | ''>(0);
     const [childrenCount, setChildrenCount] = useState<number | ''>(0);
     const [message, setMessage] = useState('');
-    
-    const [statusMsg, setStatusMsg] = useState<{type: 'success' | 'error', text: string} | null>(null);
+
+    const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     // Kiểm tra trạng thái đăng nhập
     useEffect(() => {
@@ -106,7 +106,7 @@ export default function SosButton() {
     return (
         <>
             {/* NÚT BẤM SOS NỔI (LUÔN Ở GÓC DƯỚI BÊN PHẢI) */}
-            <button 
+            <button
                 onClick={() => setIsOpen(true)}
                 className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-red-600 rounded-full shadow-2xl flex items-center justify-center border-4 border-white animate-bounce hover:bg-red-700 transition-colors"
                 title="Gửi tín hiệu cấp cứu khẩn cấp"
@@ -121,7 +121,7 @@ export default function SosButton() {
                 <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         {/* Nút tắt Modal */}
-                        <button 
+                        <button
                             onClick={() => setIsOpen(false)}
                             className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-xl font-bold"
                         >
@@ -129,7 +129,7 @@ export default function SosButton() {
                         </button>
 
                         <h2 className="text-2xl font-black text-red-600 mb-2 text-center">BÁO ĐỘNG KHẨN CẤP</h2>
-                        
+
                         {isLoggedIn ? (
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                                 <p className="text-sm text-blue-800 font-medium text-center">
@@ -147,54 +147,54 @@ export default function SosButton() {
                                 <>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Họ và tên <span className="text-red-500">*</span></label>
-                                        <input 
-                                            type="text" 
+                                        <input
+                                            type="text"
                                             value={name}
                                             onChange={(e) => setName(e.target.value)}
                                             placeholder="Nhập tên của bạn..."
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                                            className="w-full p-3 border border-black-300 text-black rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                                         />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Số điện thoại liên hệ <span className="text-red-500">*</span></label>
-                                        <input 
-                                            type="tel" 
+                                        <input
+                                            type="tel"
                                             value={phone}
                                             onChange={(e) => setPhone(e.target.value)}
                                             placeholder="Nhập số điện thoại..."
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                                            className="w-full p-3 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                                         />
                                     </div>
 
                                     <div className="grid grid-cols-3 gap-3">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-700 mb-1" title="Tổng số người đang gặp nạn">Tổng số người</label>
-                                            <input 
-                                                type="number" 
+                                            <input
+                                                type="number"
                                                 min="1"
                                                 value={totalPeople}
                                                 onChange={(e) => setTotalPeople(e.target.value === '' ? '' : Number(e.target.value))}
-                                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-center"
+                                                className="w-full p-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-center"
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-700 mb-1" title="Số lượng người già (>65 tuổi)">Người già</label>
-                                            <input 
-                                                type="number" 
+                                            <input
+                                                type="number"
                                                 min="0"
                                                 value={elderlyCount}
                                                 onChange={(e) => setElderlyCount(e.target.value === '' ? '' : Number(e.target.value))}
-                                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-center"
+                                                className="w-full p-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-center"
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-700 mb-1" title="Số lượng trẻ em (<12 tuổi)">Trẻ em</label>
-                                            <input 
-                                                type="number" 
+                                            <input
+                                                type="number"
                                                 min="0"
                                                 value={childrenCount}
                                                 onChange={(e) => setChildrenCount(e.target.value === '' ? '' : Number(e.target.value))}
-                                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-center"
+                                                className="w-full p-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-center"
                                             />
                                         </div>
                                     </div>
@@ -203,12 +203,12 @@ export default function SosButton() {
 
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Lời nhắn / Tình trạng (Tùy chọn)</label>
-                                <textarea 
+                                <textarea
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     placeholder="Ví dụ: Cần cano cứu hộ gấp, nước ngập ngang ngực..."
                                     rows={isLoggedIn ? 4 : 2}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                                    className="w-full p-3 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                                 />
                             </div>
 
@@ -219,7 +219,7 @@ export default function SosButton() {
                                 </div>
                             )}
 
-                            <button 
+                            <button
                                 onClick={handleSendSos}
                                 disabled={loading}
                                 className="w-full py-4 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-black text-lg rounded-xl shadow-lg transition-all uppercase tracking-wide mt-2"

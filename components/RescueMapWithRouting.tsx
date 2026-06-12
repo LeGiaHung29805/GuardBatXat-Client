@@ -142,7 +142,8 @@ export default function RescueMapWithRouting({ startPos, destPos, onRouteFound }
         const summary = e.routes[0].summary;
         const rawKm  = summary.totalDistance / 1000;
         const distKm = Math.round(rawKm * 10) / 10;
-        const durMin = Math.round(summary.totalTime / 60);
+        // Tính thời gian dựa trên vận tốc mặc định 40km/h
+        const durMin = Math.round((rawKm / 40) * 60);
         onRouteFound?.(distKm, durMin);
       });
     });

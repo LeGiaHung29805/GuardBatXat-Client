@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import type { NotificationLog } from "../types";
-import { 
-  Megaphone, 
-  PenLine, 
-  Send, 
-  ClipboardList, 
-  Target, 
-  History, 
-  Inbox, 
-  CheckCircle2, 
+import {
+  Megaphone,
+  PenLine,
+  Send,
+  ClipboardList,
+  Target,
+  History,
+  Inbox,
+  CheckCircle2,
   XCircle,
-  Globe 
+  Globe
 } from "lucide-react"; // Import thư viện Icon
 
 interface Props {
@@ -22,10 +22,10 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
   const [alertMessage, setAlertMessage] = useState("");
 
   const quickTemplates = [
-    "🌧️ CẢNH BÁO: Mưa lớn dự kiến trong 2 giờ tới. Người dân cần đề phòng ngập úng.",
-    "🌊 KHẨN CẤP: Mực nước sông đang lên nhanh. Vùng trũng thấp cần di chuyển ngay!",
-    "⛰️ NGUY HIỂM: Nguy cơ sạt lở cao tại khu vực dốc. Tránh xa ngay!",
-    "✅ AN TOÀN: Mưa đã ngớt, mực nước đang xuống. Người dân có thể trở về nhà.",
+    "CẢNH BÁO: Mưa lớn dự kiến trong 2 giờ tới. Người dân cần đề phòng ngập úng.",
+    "KHẨN CẤP: Mực nước sông đang lên nhanh. Vùng trũng thấp cần di chuyển ngay!",
+    "NGUY HIỂM: Nguy cơ sạt lở cao tại khu vực dốc. Tránh xa ngay!",
+    "AN TOÀN: Mưa đã ngớt, mực nước đang xuống. Người dân có thể trở về nhà.",
   ];
 
   const handleSend = () => {
@@ -102,7 +102,7 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
           <History size={24} className="text-yellow-400" />
           Lịch sử Cảnh báo
         </h3>
-        
+
         <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
           {notifications.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 py-12">
@@ -124,11 +124,10 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
                     <div className="font-medium text-gray-200 leading-snug">{notif.message}</div>
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 flex-shrink-0 shadow-sm ${
-                      notif.status === "sent"
+                    className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 flex-shrink-0 shadow-sm ${notif.status === "sent"
                         ? "bg-green-900/50 text-green-400 border border-green-800"
                         : "bg-red-900/50 text-red-400 border border-red-800"
-                    }`}
+                      }`}
                   >
                     {notif.status === "sent" ? (
                       <><CheckCircle2 size={14} /> Đã gửi</>
@@ -146,7 +145,7 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
           )}
         </div>
       </div>
-      
+
     </div>
   );
 }

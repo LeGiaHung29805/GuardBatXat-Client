@@ -123,7 +123,7 @@ export default function EvacuationMap({ userLocation, options, selectedIndex }: 
                         <Popup>
                             <div className="text-center p-1">
                                 <strong className="text-red-600 block mb-1 text-base">{selectedOption.destination.name}</strong>
-                                Sức chứa: <b className="text-green-600">{selectedOption.destination.available_capacity}</b> người<br />
+                                Sức chứa: <b className="text-green-600">{selectedOption.destination.available_capacity || (selectedOption.destination.max_capacity - selectedOption.destination.current_occupancy)} / {selectedOption.destination.max_capacity}</b> người<br />
                                 Tình trạng: <span className="text-green-600 font-semibold">An toàn</span>
                             </div>
                         </Popup>

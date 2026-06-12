@@ -74,7 +74,7 @@ export default function CitizenLayout({
         </nav>
       </header>
 
-      <main className="min-h-screen bg-slate-900 overflow-x-hidden">
+      <main className="flex-1 bg-slate-900 overflow-y-auto overflow-x-hidden relative">
         {children}
       </main>
 

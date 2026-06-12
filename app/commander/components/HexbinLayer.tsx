@@ -2,8 +2,8 @@
 import { useEffect } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
-import "@asymmetrik/leaflet-hexbin";
-import "leaflet-hexbin-layer";
+// import "@asymmetrik/leaflet-hexbin";
+// import "leaflet-hexbin-layer";
 
 interface HexbinProps {
   points: { lat: number, lng: number, intensity: number }[]; // Dữ liệu điểm rủi ro

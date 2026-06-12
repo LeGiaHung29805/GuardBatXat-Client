@@ -94,8 +94,8 @@ export default function EvacuationPage() {
                             key={opt.destination.id}
                             onClick={() => setSelectedIndex(index)}
                             className={`p-4 rounded-xl cursor-pointer border-2 transition-all ${selectedIndex === index
-                                    ? 'border-red-500 bg-red-50 shadow-md'
-                                    : 'border-gray-200 hover:border-red-300'
+                                ? 'border-red-500 bg-red-50 shadow-md'
+                                : 'border-gray-200 hover:border-red-300'
                                 }`}
                         >
                             <div className="flex justify-between items-start mb-2">
@@ -107,7 +107,9 @@ export default function EvacuationPage() {
                             </div>
                             <p className="font-semibold text-gray-700 mb-1">{opt.destination.name}</p>
                             <p className="text-sm text-gray-500">
-                                Sức chứa: <span className="font-bold text-green-600">{opt.destination.available_capacity} chỗ</span>
+                                Sức chứa: <span className="font-bold text-green-600">
+                                    {opt.destination.available_capacity} chỗ
+                                </span>
                             </p>
                         </div>
                     ))}

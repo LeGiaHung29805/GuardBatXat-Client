@@ -20,6 +20,7 @@ import ToastContainer, { showToast } from "@/components/ui/Toast";
 
 export default function PCTTCommanderDashboard() {
   const [activeTab, setActiveTab] = useState<"monitor" | "evacuate" | "analyze" | "alert">("monitor");
+  const [scenarios, setScenarios] = useState<ScenarioLevel[]>(["80m", "82m", "83.5m"]);
   const [selectedScenario, setSelectedScenario] = useState<ScenarioLevel>("80m");
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>("Đang cập nhật...");
@@ -40,11 +41,26 @@ export default function PCTTCommanderDashboard() {
     setLastUpdate(new Date().toLocaleString("vi-VN"));
     setupWebSocket();
     fetchAlertHistory(); 
+    fetchScenarios();
     
     return () => {
       websocket.disconnect();
     };
   }, []);
+
+  const fetchScenarios = async () => {
+    try {
+      const data: any = await api.getAvailableScenarios();
+      if (data && data.length > 0) {
+        setScenarios(data);
+        if (!data.includes(selectedScenario)) {
+            setSelectedScenario(data[0]);
+        }
+      }
+    } catch (e) {
+      console.error("Lỗi khi tải danh sách kịch bản:", e);
+    }
+  };
 
   useEffect(() => {
     fetchDataForScenario();
@@ -122,15 +138,15 @@ export default function PCTTCommanderDashboard() {
     setSelectedScenario(scenario);
   };
 
-  const handleActivateEvacuation = async () => {
-    if (!confirm(`Xác nhận KÍCH HOẠT lệnh sơ tán khẩn cấp cho mốc ${selectedScenario}?`)) {
+  const handleActivateEvacuation = async (radius: number) => {
+    if (!confirm(`Xác nhận KÍCH HOẠT lệnh sơ tán khẩn cấp cho mốc ${selectedScenario} với bán kính ${radius}m?`)) {
       return;
     }
 
     try {
       setLoading(true);
       const levelNumber = selectedScenario.replace('m', '');
-      const response: any = await api.activateEvacuation(levelNumber);
+      const response: any = await api.activateEvacuation(levelNumber, radius);
       
       showToast("info", "Thông báo", response);
       
@@ -245,6 +261,7 @@ export default function PCTTCommanderDashboard() {
       <main className="container mx-auto px-6 py-8">
         {activeTab === "monitor" && (
           <MonitorTab
+            scenarios={scenarios}
             selectedScenario={selectedScenario}
             onScenarioChange={handleScenarioChange}
             floodData={floodPoints}        
@@ -253,6 +270,7 @@ export default function PCTTCommanderDashboard() {
         )}
         {activeTab === "evacuate" && (
           <EvacuateTab
+            scenarios={scenarios}
             selectedScenario={selectedScenario}
             damageStats={damageStats}
             onActivate={handleActivateEvacuation}
@@ -260,6 +278,7 @@ export default function PCTTCommanderDashboard() {
         )}
         {activeTab === "analyze" && (
           <AnalyzeTab 
+            scenarios={scenarios}
             selectedScenario={selectedScenario} 
             damageStats={damageStats} 
           />

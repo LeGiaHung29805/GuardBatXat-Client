@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ApiClient, setAuthToken } from "@/lib/ApiClient"; // Đã thêm setAuthToken
 import SosButton from "@/components/ui/SosButton";
+import websocket from "@/app/commander/utils/websocket";
+import ToastContainer, { showToast } from "@/components/ui/Toast";
 
 export default function GlobalUI() {
     const router = useRouter();
@@ -59,7 +61,57 @@ export default function GlobalUI() {
             }
         };
         checkAuth();
-    }, []);
+
+        // Đăng ký nhận thông báo cảnh báo toàn cục (Global Alert) từ Commander
+        const token = localStorage.getItem("jwt_token") || "guest";
+        websocket.connect(token);
+        const handleAlert = (data: any) => {
+            // Nếu người dùng là Citizen hoặc Guest thì mới hiển thị popup báo động
+            if (userRole === "CITIZEN" || userRole === "GUEST") {
+                // Tính khoảng cách nếu có tọa độ trung tâm và bán kính
+                if (data.centerLat && data.centerLng && data.radius && "geolocation" in navigator) {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            const userLat = pos.coords.latitude;
+                            const userLng = pos.coords.longitude;
+                            
+                            // Hàm tính khoảng cách Haversine (m)
+                            const R = 6371e3; // metres
+                            const φ1 = userLat * Math.PI/180;
+                            const φ2 = data.centerLat * Math.PI/180;
+                            const Δφ = (data.centerLat - userLat) * Math.PI/180;
+                            const Δλ = (data.centerLng - userLng) * Math.PI/180;
+
+                            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                                    Math.cos(φ1) * Math.cos(φ2) *
+                                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                            const distance = R * c; // in metres
+
+                            if (distance <= data.radius) {
+                                showToast("danger", data.title || "⚠️ LỆNH TỪ BAN CHỈ HUY", data.content || "Có lệnh sơ tán khẩn cấp.");
+                            } else {
+                                console.log("Bạn nằm ngoài vùng nguy hiểm. Khoảng cách: ", distance);
+                            }
+                        },
+                        (err) => {
+                            // Không lấy được GPS -> Mặc định vẫn cảnh báo để an toàn
+                            showToast("danger", data.title || "⚠️ LỆNH TỪ BAN CHỈ HUY", data.content || "Có lệnh sơ tán khẩn cấp.");
+                        }
+                    );
+                } else {
+                    // Cảnh báo chung toàn vùng
+                    showToast("danger", data.title || "⚠️ LỆNH TỪ BAN CHỈ HUY", data.content || "Có lệnh sơ tán khẩn cấp.");
+                }
+            }
+        };
+
+        websocket.on("MANUAL_ALERT", handleAlert);
+
+        return () => {
+            websocket.off("MANUAL_ALERT", handleAlert);
+        };
+    }, [userRole]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -130,6 +182,7 @@ export default function GlobalUI() {
     };
     return (
         <>
+            <ToastContainer />
             <div className="fixed top-4 right-4 z-50 flex items-center gap-4">
                 {isLoggedIn ? (
                     <div className="flex items-center gap-3 bg-slate-900/80 backdrop-blur border border-slate-700 p-2 rounded-full shadow-lg">
