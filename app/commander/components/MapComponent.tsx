@@ -99,6 +99,7 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
                     </div>
                     Loại: {pt.loai_nha}<br />
                     Kẹt lại: <span className="text-red-500 font-bold">{pt.so_nguoi} người</span><br />
+                    Diện tích: <span className="font-semibold">{pt.dien_tich ? Math.round(pt.dien_tich).toLocaleString() : "?"} m²</span><br />
                     Cao độ: {pt.cao_do}m
                   </Popup>
                 </CircleMarker>

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import type { ScenarioLevel, DamageStats } from "../types";
 import { 
   Siren, 
@@ -10,19 +11,41 @@ import {
   BellRing
 } from "lucide-react"; // Import thư viện Icon
 
+// Import bản đồ động để tránh lỗi SSR của Next.js
+const EvacuationRadiusMap = dynamic(() => import("./EvacuationRadiusMap"), { ssr: false });
+
 interface Props {
   scenarios: ScenarioLevel[];
   selectedScenario: ScenarioLevel;
   damageStats: DamageStats;
+  floodData?: any[];
   onActivate: (radius: number) => void;
 }
 
 export default function EvacuateTab({
   selectedScenario,
   damageStats,
+  floodData = [],
   onActivate,
 }: Props) {
   const [radius, setRadius] = useState<number>(1000);
+
+  // Tính tâm vùng ngập (centroid) từ các điểm ngập; mặc định là trung tâm Bát Xát
+  const center = useMemo<[number, number]>(() => {
+    const coords: [number, number][] = [];
+    for (const pt of floodData) {
+      try {
+        const geo = typeof pt.geojson === "string" ? JSON.parse(pt.geojson) : pt.geojson;
+        if (geo?.coordinates) coords.push([geo.coordinates[1], geo.coordinates[0]]);
+      } catch {
+        // bỏ qua điểm lỗi
+      }
+    }
+    if (coords.length === 0) return [22.528534, 103.885091];
+    const sumLat = coords.reduce((s, c) => s + c[0], 0);
+    const sumLng = coords.reduce((s, c) => s + c[1], 0);
+    return [sumLat / coords.length, sumLng / coords.length];
+  }, [floodData]);
 
   return (
     <div className="space-y-6">
@@ -95,6 +118,15 @@ export default function EvacuateTab({
             <span className="font-bold text-xl text-red-400 min-w-[80px] text-right">
               {radius >= 1000 ? `${radius/1000} km` : `${radius} m`}
             </span>
+          </div>
+
+          {/* BẢN ĐỒ VÙNG SƠ TÁN: vẽ vòng tròn bán kính quanh tâm vùng ngập */}
+          <div className="mt-5">
+            <div className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+              <MapIcon size={16} className="text-red-400" />
+              Phạm vi tác động (vùng đỏ sẽ nhận lệnh sơ tán)
+            </div>
+            <EvacuationRadiusMap center={center} radius={radius} floodPoints={floodData} />
           </div>
         </div>
 

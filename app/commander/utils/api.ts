@@ -81,6 +81,14 @@ class ApiService {
     return this.fetchWithAuth(`/commander/analysis/damage-trend`);
   }
 
+  async getCommuneRanking(level: string) {
+    return this.fetchWithAuth(`/commander/analysis/commune-ranking?level=${level}`);
+  }
+
+  async getWaterForecast() {
+    return this.fetchWithAuth(`/commander/analysis/water-forecast`);
+  }
+
   // ==================== ĐIỀU HÀNH SƠ TÁN ====================
   async activateEvacuation(level: string, radius: number = 1000) {
     return this.fetchWithAuth(`/commander/evacuation/activate?level=${level}&radius=${radius}`, {
