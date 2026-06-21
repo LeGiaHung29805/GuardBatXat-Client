@@ -18,6 +18,10 @@ import {
 } from "lucide-react";
 import ToastContainer, { showToast } from "@/components/ui/Toast";
 
+// Tổng số dân ước tính của khu vực Bát Xát (dùng làm số người dân nhận cảnh báo diện rộng).
+// Đây là con số dân số toàn vùng, không phải số thiết bị; broadcast gửi tới toàn bộ người dân trong vùng.
+const BAT_XAT_POPULATION = 3241;
+
 export default function PCTTCommanderDashboard() {
   const [activeTab, setActiveTab] = useState<
     "monitor" | "evacuate" | "analyze" | "alert"
@@ -102,7 +106,8 @@ export default function PCTTCommanderDashboard() {
   };
 
   const setupWebSocket = () => {
-    const token = localStorage.getItem("token") || "guest";
+    const token =
+      localStorage.getItem("jwt_token") || localStorage.getItem("token") || "guest";
     websocket.connect(token);
 
     // Lắng nghe API cũ
@@ -192,7 +197,7 @@ export default function PCTTCommanderDashboard() {
       const formattedHistory = (history ?? []).map((item: any) => ({
         id: item.notifyId?.toString() ?? "",
         message: `[${item.targetArea}] ${item.title} - ${item.content}`,
-        sentTo: 3241,
+        sentTo: BAT_XAT_POPULATION,
         timestamp: item.time,
         status: "sent",
       }));

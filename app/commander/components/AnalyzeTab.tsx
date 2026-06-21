@@ -188,11 +188,11 @@ export default function AnalyzeTab({ damageStats, selectedScenario = "82m" }: Pr
           subtitle="So với dự báo trước"
         />
         <StatCard
-          label="Dân số ảnh hưởng"
+          label="Số người tối đa ảnh hưởng"
           value={damageStats.populationEvacuated}
           icon={<Users size={24} />} 
           color="purple"
-          subtitle={`${Math.round((damageStats.populationEvacuated / 3241) * 100)}% dân số`}
+          subtitle="Ước tính theo sức chứa công trình"
         />
         <StatCard
           label="Diện tích (m²)"
@@ -354,10 +354,10 @@ export default function AnalyzeTab({ damageStats, selectedScenario = "82m" }: Pr
       <div className="bg-gray-800/60 backdrop-blur-md rounded-2xl p-6 border border-gray-700">
         <h3 className="text-xl font-bold mb-1 flex items-center gap-3">
           <Waves size={24} className="text-cyan-400" />
-          Dự báo Diễn biến Mực nước Lưu vực
+          Diễn biến Chỉ số Nước Lưu vực (Lịch sử)
         </h3>
         <p className="text-sm text-gray-400 mb-4 ml-9">
-          Mực nước ước tính (m) và lượng mưa (mm) theo các mốc gần nhất
+          Chỉ số tích lũy nước lưu vực và lượng mưa (mm) theo các ngày gần nhất
         </p>
         <div className="h-72 w-full mt-2">
           {isChartReady && waterForecast && waterForecast.length > 0 ? (
@@ -365,14 +365,14 @@ export default function AnalyzeTab({ damageStats, selectedScenario = "82m" }: Pr
               <LineChart data={waterForecast} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="ngay" stroke="#9ca3af" />
-                <YAxis yAxisId="left" stroke="#22d3ee" unit="m" />
+                <YAxis yAxisId="left" stroke="#22d3ee" />
                 <YAxis yAxisId="right" orientation="right" stroke="#60a5fa" unit="mm" />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }}
                   itemStyle={{ color: '#fff' }}
                 />
                 <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="muc_nuoc" name="Mực nước (m)" stroke="#22d3ee" strokeWidth={3} activeDot={{ r: 8 }} />
+                <Line yAxisId="left" type="monotone" dataKey="muc_nuoc" name="Chỉ số nước lưu vực" stroke="#22d3ee" strokeWidth={3} activeDot={{ r: 8 }} />
                 <Line yAxisId="right" type="monotone" dataKey="luong_mua" name="Lượng mưa (mm)" stroke="#60a5fa" strokeWidth={2} strokeDasharray="5 5" />
               </LineChart>
             </ResponsiveContainer>

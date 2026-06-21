@@ -170,7 +170,7 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
                 </div>
                 <div className="text-sm text-gray-400 mt-2 border-t border-gray-600/50 pt-2 flex items-center gap-2">
                   <Target size={14} />
-                  Đã phát tới: <span className="font-bold text-white">{notif.sentTo.toLocaleString()}</span> thiết bị
+                  Đã phát tới: <span className="font-bold text-white">{notif.sentTo.toLocaleString()}</span> người dân (toàn khu vực)
                 </div>
               </div>
             ))

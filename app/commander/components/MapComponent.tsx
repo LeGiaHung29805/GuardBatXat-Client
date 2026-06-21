@@ -16,17 +16,37 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
   // Tọa độ trung tâm (Máp đúng tọa độ thật)
   const center: [number, number] = [22.528534, 103.885091];
 
-  // Xử lý tọa độ thật của từng ngôi nhà/đoạn đường để vẽ Bản đồ nhiệt
+  // Parse GeoJSON an toàn: trả về [lat, lng] hoặc null nếu dữ liệu lỗi
+  const parseLatLng = (pt: any): [number, number] | null => {
+    try {
+      const geo = typeof pt?.geojson === "string" ? JSON.parse(pt.geojson) : pt?.geojson;
+      const lng = geo?.coordinates?.[0];
+      const lat = geo?.coordinates?.[1];
+      if (
+        typeof lat === "number" && typeof lng === "number" &&
+        !isNaN(lat) && !isNaN(lng)
+      ) {
+        return [lat, lng];
+      }
+    } catch {
+      // bỏ qua điểm lỗi
+    }
+    return null;
+  };
+
+  const clamp01 = (v: number) => Math.max(0, Math.min(1, Number(v) || 0));
+
+  // Xử lý tọa độ thật của từng ngôi nhà/đoạn đường để vẽ Bản đồ nhiệt (đã lọc điểm lỗi)
   const heatData: [number, number, number][] = [
-    ...floodPoints.map(pt => {
-      const geo = typeof pt.geojson === 'string' ? JSON.parse(pt.geojson) : pt.geojson;
-      return [geo.coordinates[1], geo.coordinates[0], pt.muc_do ?? 0.6] as [number, number, number];
+    ...floodPoints.map((pt) => {
+      const c = parseLatLng(pt);
+      return c ? ([c[0], c[1], clamp01(pt.muc_do ?? 0.6)] as [number, number, number]) : null;
     }),
-    ...landslidePoints.map(pt => {
-      const geo = typeof pt.geojson === 'string' ? JSON.parse(pt.geojson) : pt.geojson;
-      return [geo.coordinates[1], geo.coordinates[0], pt.muc_do ?? 1.0] as [number, number, number];
-    })
-  ];
+    ...landslidePoints.map((pt) => {
+      const c = parseLatLng(pt);
+      return c ? ([c[0], c[1], clamp01(pt.muc_do ?? 1.0)] as [number, number, number]) : null;
+    }),
+  ].filter((p): p is [number, number, number] => p !== null);
 
   return (
     <div className="relative h-[600px] w-full rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -80,11 +100,12 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
         {mapMode === "points" && (
           <>
             {floodPoints.map((pt, idx) => {
-              const geo = JSON.parse(pt.geojson);
+              const c = parseLatLng(pt);
+              if (!c) return null;
               return (
                 <CircleMarker
                   key={`flood-${idx}`}
-                  center={[geo.coordinates[1], geo.coordinates[0]]}
+                  center={c}
                   radius={8}
                   pathOptions={{
                     fillColor: "#3b82f6",
@@ -98,7 +119,7 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
                       <strong>Nhà bị ngập</strong>
                     </div>
                     Loại: {pt.loai_nha}<br />
-                    Kẹt lại: <span className="text-red-500 font-bold">{pt.so_nguoi} người</span><br />
+                    Tối đa ảnh hưởng: <span className="text-red-500 font-bold">{pt.so_nguoi} người</span><br />
                     Diện tích: <span className="font-semibold">{pt.dien_tich ? Math.round(pt.dien_tich).toLocaleString() : "?"} m²</span><br />
                     Cao độ: {pt.cao_do}m
                   </Popup>
@@ -107,11 +128,12 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
             })}
 
             {landslidePoints.map((pt, idx) => {
-              const geo = JSON.parse(pt.geojson);
+              const c = parseLatLng(pt);
+              if (!c) return null;
               return (
                 <CircleMarker
                   key={`land-${idx}`}
-                  center={[geo.coordinates[1], geo.coordinates[0]]}
+                  center={c}
                   radius={8}
                   pathOptions={{
                     fillColor: "#ef4444",
