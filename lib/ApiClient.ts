@@ -17,6 +17,113 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
+// Helpers riêng cho heatmap để fallback khi endpoint tổng hợp phía backend lỗi.
+const unwrapApiPayload = (payload: any) => {
+  if (payload && typeof payload === "object" && payload.code === 200 && "data" in payload) {
+    return payload.data;
+  }
+  return payload;
+};
+
+const fetchJsonWithoutInterceptor = async (path: string) => {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (typeof window !== "undefined") {
+    const token =
+      localStorage.getItem("jwt_token") || localStorage.getItem("token");
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  const text = await response.text();
+  let payload: any = null;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = text;
+    }
+  }
+
+  if (!response.ok) {
+    const message = typeof payload === "object" && payload?.message
+      ? payload.message
+      : text || `HTTP ${response.status}`;
+    throw new Error(message);
+  }
+
+  return unwrapApiPayload(payload);
+};
+
+const findLngLatInGeoJson = (coords: any): [number, number] | null => {
+  if (!Array.isArray(coords)) return null;
+  if (typeof coords[0] === "number" && typeof coords[1] === "number") {
+    return [coords[0], coords[1]];
+  }
+
+  for (const child of coords) {
+    const found = findLngLatInGeoJson(child);
+    if (found) return found;
+  }
+
+  return null;
+};
+
+const normalizeHeatmapPoints = (payload: any): HeatmapPoint[] => {
+  const rows = Array.isArray(payload) ? payload : [];
+
+  return rows
+    .map((point: any): HeatmapPoint | null => {
+      if (Array.isArray(point)) {
+        return [
+          Number(point[0]),
+          Number(point[1]),
+          Number(point[2] ?? 0.5),
+        ];
+      }
+
+      if (!point || typeof point !== "object") return null;
+
+      if (point.lat !== undefined && point.lng !== undefined) {
+        return {
+          lat: Number(point.lat),
+          lng: Number(point.lng),
+          weight: Number(point.weight ?? point.muc_do ?? 0.5),
+          severity: point.severity ?? point.risk_severity ?? point.riskStatus,
+        };
+      }
+
+      if (point.geojson) {
+        const geojson = typeof point.geojson === "string"
+          ? JSON.parse(point.geojson)
+          : point.geojson;
+        const lngLat = findLngLatInGeoJson(geojson?.coordinates);
+
+        if (lngLat) {
+          return {
+            lat: Number(lngLat[1]),
+            lng: Number(lngLat[0]),
+            weight: Number(point.weight ?? point.muc_do ?? point.combined_score ?? 0.6),
+            severity: point.severity ?? point.risk_severity ?? point.riskStatus,
+          };
+        }
+      }
+
+      return null;
+    })
+    .filter((point): point is HeatmapPoint => {
+      const values = Array.isArray(point)
+        ? point
+        : point
+          ? [point.lat, point.lng, point.weight]
+          : [];
+      return values.every((value) => Number.isFinite(value));
+    });
+};
+
 // Khởi tạo 1 Axios Instance duy nhất
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -62,7 +169,7 @@ axiosInstance.interceptors.response.use(
 
         // Chuyển hướng về trang đăng nhập nếu cần
         if (window.location.pathname !== "/auth") {
-          // window.location.href = '/auth';
+          window.location.href = '/auth';
         }
       }
     }
@@ -125,8 +232,21 @@ export const ApiClient = {
   // --- CITIZEN & PUBLIC ---
   // ==========================================
   getInitialLandslideData: async (): Promise<HeatmapPoint[]> => {
-    const response = await axiosInstance.get("/v1/map/heatmap/landslide");
-    return response.data;
+    try {
+      const payload = await fetchJsonWithoutInterceptor("/v1/map/heatmap/landslide");
+      const points = normalizeHeatmapPoints(payload);
+      if (points.length > 0) return points;
+    } catch (error) {
+      console.warn(
+        "Combined heatmap endpoint failed, falling back to landslide-only heatmap:",
+        error,
+      );
+    }
+
+    const fallbackPayload = await fetchJsonWithoutInterceptor(
+      "/v1/commander/dashboard/commander-heatmap-landslide",
+    );
+    return normalizeHeatmapPoints(fallbackPayload);
   },
   checkSafety: async (
     data: LocationCheckRequest,

@@ -6,6 +6,86 @@ import { ApiClient, setAuthToken } from "@/lib/ApiClient"; // Đã thêm setAuth
 import SosButton from "@/components/ui/SosButton";
 import websocket from "@/app/commander/utils/websocket";
 import ToastContainer, { showToast } from "@/components/ui/Toast";
+import { Navigation } from "lucide-react";
+
+type RescueTrackingUpdate = {
+    missionId?: string | number;
+    sosId?: string | number;
+    status?: string;
+    message?: string;
+    lat?: number;
+    lng?: number;
+    remainingKm?: number;
+    timestamp?: string;
+};
+
+type RescueTrackingPoint = {
+    lat: number;
+    lng: number;
+    remainingKm?: number;
+    timestamp?: string;
+};
+
+const RESCUE_TRACKING_STORAGE_KEY = "rescue:latest-tracking-update";
+const RESCUE_TRACKING_HISTORY_KEY_PREFIX = "rescue:tracking-history:";
+const RESCUE_TRACKING_EVENT_NAME = "rescue-tracking-update";
+const TRACKING_UPDATE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const MAX_TRACKING_HISTORY_POINTS = 700;
+
+const getTrackingHistoryStorageKey = (missionId: string | number) =>
+    `${RESCUE_TRACKING_HISTORY_KEY_PREFIX}${missionId}`;
+
+const appendTrackingHistoryUpdate = (data: RescueTrackingUpdate) => {
+    if (!data.missionId || typeof data.lat !== "number" || typeof data.lng !== "number") return;
+
+    const historyKey = getTrackingHistoryStorageKey(data.missionId);
+    let history: RescueTrackingPoint[] = [];
+
+    try {
+        const parsed = JSON.parse(localStorage.getItem(historyKey) || "[]");
+        if (Array.isArray(parsed)) {
+            history = parsed.filter((point): point is RescueTrackingPoint =>
+                typeof point?.lat === "number" &&
+                typeof point?.lng === "number",
+            );
+        }
+    } catch {
+        history = [];
+    }
+
+    const nextPoint: RescueTrackingPoint = {
+        lat: data.lat,
+        lng: data.lng,
+        remainingKm: data.remainingKm,
+        timestamp: data.timestamp,
+    };
+    const lastPoint = history[history.length - 1];
+    const nextHistory = lastPoint?.lat === nextPoint.lat && lastPoint?.lng === nextPoint.lng
+        ? history
+        : [...history, nextPoint].slice(-MAX_TRACKING_HISTORY_POINTS);
+
+    localStorage.setItem(historyKey, JSON.stringify(nextHistory));
+};
+
+const parseStoredTrackingUpdate = (value: string | null): RescueTrackingUpdate | null => {
+    if (!value) return null;
+
+    try {
+        const parsed = JSON.parse(value) as RescueTrackingUpdate;
+        if (!parsed || typeof parsed !== "object") return null;
+
+        if (parsed.timestamp) {
+            const timestamp = Date.parse(parsed.timestamp);
+            if (!Number.isNaN(timestamp) && Date.now() - timestamp > TRACKING_UPDATE_MAX_AGE_MS) {
+                return null;
+            }
+        }
+
+        return parsed;
+    } catch {
+        return null;
+    }
+};
 
 export default function GlobalUI() {
     const router = useRouter();
@@ -19,6 +99,8 @@ export default function GlobalUI() {
     const [userRole, setUserRole] = useState<string>("GUEST");
     const [userName, setUserName] = useState<string>("");
     const [showGreeting, setShowGreeting] = useState(false);
+    const [rescueTracking, setRescueTracking] = useState<RescueTrackingUpdate | null>(null);
+    const [isTrackingCollapsed, setIsTrackingCollapsed] = useState(false);
 
     // Tự động ẩn lời chào sau 3 giây
     useEffect(() => {
@@ -108,8 +190,49 @@ export default function GlobalUI() {
 
         websocket.on("MANUAL_ALERT", handleAlert);
 
+        websocket.subscribe("/topic/rescue-tracking", (data: RescueTrackingUpdate) => {
+            if (userRole === "CITIZEN" || userRole === "GUEST") {
+                setRescueTracking(data);
+                try {
+                    appendTrackingHistoryUpdate(data);
+                    localStorage.setItem(RESCUE_TRACKING_STORAGE_KEY, JSON.stringify(data));
+                    window.dispatchEvent(new CustomEvent(RESCUE_TRACKING_EVENT_NAME, { detail: data }));
+                } catch {
+                    // Browser storage can be unavailable in private modes.
+                }
+            }
+        });
+
         return () => {
             websocket.off("MANUAL_ALERT", handleAlert);
+            websocket.unsubscribe("/topic/rescue-tracking");
+        };
+    }, [userRole]);
+
+    useEffect(() => {
+        if (userRole !== "CITIZEN" && userRole !== "GUEST") return;
+
+        const applyTrackingUpdate = (data: RescueTrackingUpdate | null) => {
+            if (data) setRescueTracking(data);
+        };
+
+        applyTrackingUpdate(parseStoredTrackingUpdate(localStorage.getItem(RESCUE_TRACKING_STORAGE_KEY)));
+
+        const handleStorageTracking = (event: StorageEvent) => {
+            if (event.key !== RESCUE_TRACKING_STORAGE_KEY) return;
+            applyTrackingUpdate(parseStoredTrackingUpdate(event.newValue));
+        };
+
+        const handleLocalTracking = (event: Event) => {
+            applyTrackingUpdate((event as CustomEvent<RescueTrackingUpdate>).detail);
+        };
+
+        window.addEventListener("storage", handleStorageTracking);
+        window.addEventListener(RESCUE_TRACKING_EVENT_NAME, handleLocalTracking);
+
+        return () => {
+            window.removeEventListener("storage", handleStorageTracking);
+            window.removeEventListener(RESCUE_TRACKING_EVENT_NAME, handleLocalTracking);
         };
     }, [userRole]);
 
@@ -296,6 +419,62 @@ export default function GlobalUI() {
             {(userRole === "GUEST" || userRole === "CITIZEN") && (
                 <div className="fixed bottom-4 right-4 z-50">
                     <SosButton />
+                </div>
+            )}
+
+            {(userRole === "GUEST" || userRole === "CITIZEN") && rescueTracking && isTrackingCollapsed && (
+                <button
+                    type="button"
+                    onClick={() => setIsTrackingCollapsed(false)}
+                    className="fixed bottom-24 left-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border border-cyan-400/40 bg-slate-950/90 px-3 py-2 text-white shadow-2xl backdrop-blur-md hover:border-cyan-300 hover:bg-slate-900"
+                    aria-label="Má»Ÿ theo dĂµi cá»©u há»™"
+                >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-300">
+                        <Navigation className="h-4 w-4" />
+                    </span>
+                    <span className="max-w-40 truncate text-xs font-bold text-cyan-100">
+                        {typeof rescueTracking.remainingKm === "number"
+                            ? `${rescueTracking.remainingKm} km tới SOS`
+                            : "Đội cứu hộ"}
+                    </span>
+                </button>
+            )}
+
+            {(userRole === "GUEST" || userRole === "CITIZEN") && rescueTracking && !isTrackingCollapsed && (
+                <div className="fixed bottom-24 left-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-cyan-400/40 bg-slate-950/90 p-4 text-white shadow-2xl backdrop-blur-md">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-300">
+                            <Navigation className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs font-black uppercase tracking-widest text-cyan-300">
+                                    Đội cứu hộ đang tới
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsTrackingCollapsed(true)}
+                                    className="rounded-md px-2 py-1 text-xs font-bold text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    aria-label="Ẩn theo dõi cứu hộ"
+                                >
+                                    Ẩn
+                                </button>
+                            </div>
+                            <p className="mt-1 text-sm font-semibold text-slate-100">
+                                {typeof rescueTracking.remainingKm === "number"
+                                    ? `Còn khoảng ${rescueTracking.remainingKm} km tới điểm SOS`
+                                    : rescueTracking.message || "Đang cập nhật vị trí realtime"}
+                            </p>
+                            {rescueTracking.message && typeof rescueTracking.remainingKm === "number" && (
+                                <p className="mt-1 line-clamp-2 text-xs text-slate-400">{rescueTracking.message}</p>
+                            )}
+                            {typeof rescueTracking.lat === "number" && typeof rescueTracking.lng === "number" && (
+                                <p className="mt-2 font-mono text-[11px] text-slate-500">
+                                    {rescueTracking.lat.toFixed(5)}, {rescueTracking.lng.toFixed(5)}
+                                </p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </>

@@ -14,6 +14,117 @@ export default function EvacuationPage() {
 
     const [options, setOptions] = useState<EvacuationOption[]>([]);
     const [selectedIndex, setSelectedIndex] = useState<number>(0);
+    const [rescueTracking, setRescueTracking] = useState<any>(null);
+    const [rescueRoute, setRescueRoute] = useState<any>(null);
+    const [rescueTrackingPath, setRescueTrackingPath] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const loadLatestTracking = () => {
+            const storedTracking = localStorage.getItem("rescue:latest-tracking-update");
+            if (storedTracking) {
+                try {
+                    const parsed = JSON.parse(storedTracking);
+                    setRescueTracking(parsed);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            const storedRoutePath = localStorage.getItem("rescue:latest-route-path");
+            if (storedRoutePath) {
+                try {
+                    const parsed = JSON.parse(storedRoutePath);
+                    setRescueRoute({
+                        coordinates: parsed,
+                        start: parsed[0],
+                        dest: parsed[parsed.length - 1],
+                    });
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        };
+
+        loadLatestTracking();
+
+        const handleTrackingUpdate = (event: Event) => {
+            const data = (event as CustomEvent).detail;
+            setRescueTracking(data);
+            if (data && data.lat && data.lng) {
+                setRescueTrackingPath(prev => {
+                    const nextPoint = { lat: data.lat, lng: data.lng, remainingKm: data.remainingKm };
+                    const lastPoint = prev[prev.length - 1];
+                    if (lastPoint?.lat === nextPoint.lat && lastPoint?.lng === nextPoint.lng) {
+                        return prev;
+                    }
+                    return [...prev, nextPoint];
+                });
+            }
+        };
+
+        const handleRoutePathUpdate = (event: Event) => {
+            const data = (event as CustomEvent).detail;
+            if (data?.path) {
+                setRescueRoute({
+                    coordinates: data.path,
+                    start: data.path[0],
+                    dest: data.path[data.path.length - 1],
+                });
+            }
+        };
+
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === "rescue:latest-tracking-update") {
+                if (e.newValue) {
+                    try {
+                        const parsed = JSON.parse(e.newValue);
+                        setRescueTracking(parsed);
+                        if (parsed.lat && parsed.lng) {
+                            setRescueTrackingPath(prev => {
+                                const nextPoint = { lat: parsed.lat, lng: parsed.lng, remainingKm: parsed.remainingKm };
+                                const lastPoint = prev[prev.length - 1];
+                                if (lastPoint?.lat === nextPoint.lat && lastPoint?.lng === nextPoint.lng) {
+                                    return prev;
+                                }
+                                return [...prev, nextPoint];
+                            });
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                } else {
+                    setRescueTracking(null);
+                }
+            } else if (e.key === "rescue:latest-route-path") {
+                if (e.newValue) {
+                    try {
+                        const parsed = JSON.parse(e.newValue);
+                        setRescueRoute({
+                            coordinates: parsed,
+                            start: parsed[0],
+                            dest: parsed[parsed.length - 1],
+                        });
+                    } catch (err) {
+                        console.error(err);
+                    }
+                } else {
+                    setRescueRoute(null);
+                }
+            }
+        };
+
+        window.addEventListener("rescue-tracking-update", handleTrackingUpdate);
+        window.addEventListener("rescue-route-path-update", handleRoutePathUpdate);
+        window.addEventListener("storage", handleStorageChange);
+
+        return () => {
+            window.removeEventListener("rescue-tracking-update", handleTrackingUpdate);
+            window.removeEventListener("rescue-route-path-update", handleRoutePathUpdate);
+            window.removeEventListener("storage", handleStorageChange);
+        };
+    }, []);
 
     // 1. TỰ ĐỘNG LẤY VỊ TRÍ NGAY KHI LOAD TRANG
     useEffect(() => {
@@ -122,6 +233,9 @@ export default function EvacuationPage() {
                     userLocation={userLocation}
                     options={options}
                     selectedIndex={selectedIndex}
+                    rescueTracking={rescueTracking}
+                    rescueTrackingPath={rescueTrackingPath}
+                    rescueRoute={rescueRoute}
                 />
             </div>
         </div>
