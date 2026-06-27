@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import dynamic from "next/dynamic";
+import api from "../utils/api";
 import type { ScenarioLevel, DamageStats } from "../types";
 import { 
   Siren, 
@@ -10,19 +12,67 @@ import {
   BellRing
 } from "lucide-react"; // Import thư viện Icon
 
+// Import bản đồ động để tránh lỗi SSR của Next.js
+const EvacuationRadiusMap = dynamic(() => import("./EvacuationRadiusMap"), { ssr: false });
+
 interface Props {
   scenarios: ScenarioLevel[];
   selectedScenario: ScenarioLevel;
   damageStats: DamageStats;
+  floodData?: any[];
   onActivate: (radius: number) => void;
 }
 
 export default function EvacuateTab({
   selectedScenario,
   damageStats,
+  floodData = [],
   onActivate,
 }: Props) {
   const [radius, setRadius] = useState<number>(1000);
+  const [backendCenter, setBackendCenter] = useState<[number, number] | null>(null);
+
+  // Tâm dự phòng tính phía client (centroid điểm ngập); dùng khi backend chưa trả về
+  const clientCenter = useMemo<[number, number]>(() => {
+    const coords: [number, number][] = [];
+    for (const pt of floodData) {
+      try {
+        const geo = typeof pt.geojson === "string" ? JSON.parse(pt.geojson) : pt.geojson;
+        if (geo?.coordinates) coords.push([geo.coordinates[1], geo.coordinates[0]]);
+      } catch {
+        // bỏ qua điểm lỗi
+      }
+    }
+    if (coords.length === 0) return [22.528534, 103.885091];
+    const sumLat = coords.reduce((s, c) => s + c[0], 0);
+    const sumLng = coords.reduce((s, c) => s + c[1], 0);
+    return [sumLat / coords.length, sumLng / coords.length];
+  }, [floodData]);
+
+  // Lấy tâm sơ tán CHÍNH XÁC từ backend (đúng tâm mà lệnh sơ tán sẽ phát đi)
+  useEffect(() => {
+    let cancelled = false;
+    const levelNumber = selectedScenario.replace("m", "");
+    api
+      .getEvacuationCenter(levelNumber)
+      .then((res: any) => {
+        if (cancelled) return;
+        const lat = res?.centerLat;
+        const lng = res?.centerLng;
+        if (typeof lat === "number" && typeof lng === "number") {
+          setBackendCenter([lat, lng]);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBackendCenter(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedScenario]);
+
+  // Ưu tiên tâm backend để vòng tròn preview khớp 100% với vùng thực sự nhận lệnh
+  const center: [number, number] = backendCenter ?? clientCenter;
 
   return (
     <div className="space-y-6">
@@ -43,8 +93,8 @@ export default function EvacuateTab({
               Kịch bản đang chọn: <span className="text-red-400">{selectedScenario}</span>
             </h3>
             <p className="text-gray-300">
-              Dự kiến ảnh hưởng{" "}
-              <span className="font-bold text-white">{damageStats.populationEvacuated.toLocaleString()}</span> người
+              Tối đa ảnh hưởng{" "}
+              <span className="font-bold text-white">{damageStats.populationEvacuated.toLocaleString()}</span> người (ước tính)
             </p>
           </div>
         </div>
@@ -61,7 +111,7 @@ export default function EvacuateTab({
             <div className="text-2xl font-bold text-red-400">
               {damageStats.populationEvacuated.toLocaleString()}
             </div>
-            <div className="text-sm text-gray-400">Người cần sơ tán</div>
+            <div className="text-sm text-gray-400">Số người tối đa bị ảnh hưởng (ước tính)</div>
           </div>
           <div className="bg-gray-800/80 p-4 rounded-xl text-center flex flex-col items-center justify-center border border-gray-700">
             <MapIcon size={32} className="mb-2 text-green-400" />
@@ -96,6 +146,15 @@ export default function EvacuateTab({
               {radius >= 1000 ? `${radius/1000} km` : `${radius} m`}
             </span>
           </div>
+
+          {/* BẢN ĐỒ VÙNG SƠ TÁN: vẽ vòng tròn bán kính quanh tâm vùng ngập */}
+          <div className="mt-5">
+            <div className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+              <MapIcon size={16} className="text-red-400" />
+              Phạm vi tác động (vùng đỏ sẽ nhận lệnh sơ tán)
+            </div>
+            <EvacuationRadiusMap center={center} radius={radius} floodPoints={floodData} />
+          </div>
         </div>
 
         {/* NÚT KÍCH HOẠT LỚN */}
@@ -123,7 +182,7 @@ export default function EvacuateTab({
             <div className="flex-1 mt-1"> {/* Thêm mt-1 để căn giữa chữ với hình tròn */}
               <div className="font-semibold text-white">Phát lệnh sơ tán khẩn cấp</div>
               <div className="text-sm text-gray-400 mt-0.5">
-                Gửi thông báo đến <span className="text-gray-200 font-medium">{damageStats.populationEvacuated.toLocaleString()}</span> người dân qua SMS & Push Notification
+                Gửi cảnh báo tới người dân trong vùng ảnh hưởng (tối đa ~<span className="text-gray-200 font-medium">{damageStats.populationEvacuated.toLocaleString()}</span> người) qua Push Notification
               </div>
             </div>
           </div>
