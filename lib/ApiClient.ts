@@ -14,7 +14,10 @@ import {
 
 // Gốc của API thiết lập về /api
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+  //process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+
+  // test ngrok
+  "/api";
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 // Helpers riêng cho heatmap để fallback khi endpoint tổng hợp phía backend lỗi.
