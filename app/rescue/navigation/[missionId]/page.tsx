@@ -105,9 +105,9 @@ export default function RescueNavigation() {
              missionId: String(missionId),
              status: log.status,
              message: log.message,
-             images: log.images ? log.images.split(',') : undefined,
-             location: log.gpsLat && log.gpsLng ? { lat: log.gpsLat, lng: log.gpsLng } : undefined,
-             timestamp: new Date(log.createdAt),
+             images: log.images ? (Array.isArray(log.images) ? log.images : log.images.split(',')) : undefined,
+             location: log.lat && log.lng ? { lat: log.lat, lng: log.lng } : (log.gpsLat && log.gpsLng ? { lat: log.gpsLat, lng: log.gpsLng } : undefined),
+             timestamp: log.timestamp ? new Date(log.timestamp) : (log.createdAt ? new Date(log.createdAt) : new Date()),
            }));
            setUpdates(mappedUpdates);
            setMissionStarted(true);
