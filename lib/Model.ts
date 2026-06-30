@@ -72,10 +72,11 @@ export interface RoutingRequest {
 }
 
 export interface RoutingResponseData {
-  pathPoints: boolean;
+  pathPoints?: [number, number][];
   status: string;
   message: string;
   route_coordinates: [number, number][];
+  blocked_segments?: { coords: [number, number][]; level: 'DANGER' | 'WARNING' }[];
   total_mcdm_cost: number;
 }
 
@@ -96,6 +97,7 @@ export interface LocationCheckRequest {
   latitude: number;
   longitude: number;
   address?: string;
+  waterLevel?: number;
 }
 
 export interface LocationCheckResponse {
@@ -106,10 +108,35 @@ export interface LocationCheckResponse {
   landslideRiskStatus: string;
   floodDepth: number;
   aiLandslideProb: number;
+  aiFloodProb: number;
   buildingType: string;
   distanceToWater: number;
   currentElevation: number;
 }
+
+export interface NeighborhoodBuilding {
+  id: number;
+  buildingType: string;
+  elevationZ: number;
+  geomWkt: string;
+  floodDepth: number;
+  floodStatus: string;
+  aiLandslideProb: number;
+  landslideStatus: string;
+  alertLevel: 'SAFE' | 'WARNING' | 'DANGER';
+  isSafe: boolean;
+}
+
+export interface NeighborhoodSafetyResponse {
+  totalBuildings: number;
+  safeBuildings: number;
+  warningBuildings: number;
+  dangerBuildings: number;
+  averageElevation: number;
+  maxFloodDepth: number;
+  buildings: NeighborhoodBuilding[];
+}
+
 
 // ============= GENERIC API RESPONSE =============
 export interface ApiResponse<T> {
@@ -154,19 +181,7 @@ export interface SendFieldUpdateRequest {
   lat?: number;
   lng?: number;
 }
-export interface LocationCheckResponse {
-  isSafe: boolean;
-  alertLevel: string; // SAFE, WARNING, DANGER
-  message: string;
-  floodRiskStatus: string;
-  landslideRiskStatus: string;
-  floodDepth: number;
-  aiLandslideProb: number;
-  aiFloodProb: number;
-  buildingType: string;
-  distanceToWater: number;
-  currentElevation: number;
-}
+
 
 /**
  * Response sau khi gửi cập nhật
@@ -258,3 +273,47 @@ export function getMissionStatusIcon(status: MissionStatus): string {
   };
   return icons[status];
 }
+
+// ============= INCIDENT REPORT TYPES =============
+export interface IncidentReportRequestData {
+  reporterName: string;
+  reporterPhone: string;
+  incidentType: string;
+  impactLevel: string;
+  description: string;
+  images: string[];
+  gpsLat: number;
+  gpsLng: number;
+}
+
+export interface IncidentReportResponse {
+  id: number;
+  reporterName: string;
+  reporterPhone: string;
+  incidentType: string;
+  impactLevel: string;
+  description: string;
+  images: string[];
+  gpsLat: number;
+  gpsLng: number;
+  status: string;
+  createdAt: string;
+}
+
+export interface NotificationItem {
+  notifyId: number;
+  targetArea: string;
+  title: string;
+  content: string;
+  time: string;
+  isPersonal?: boolean;
+}
+
+export interface IncidentStats {
+  pending: number;
+  approved: number;
+  resolved: number;
+  total: number;
+}
+
+

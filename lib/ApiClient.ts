@@ -10,6 +10,11 @@ import {
   SafeShelterResponseData,
   SosRequest,
   FieldUpdateData,
+  IncidentReportRequestData,
+  IncidentReportResponse,
+  NeighborhoodSafetyResponse,
+  NotificationItem,
+  IncidentStats,
 } from "./Model";
 
 // Gốc của API thiết lập về /api
@@ -289,4 +294,38 @@ export const ApiClient = {
     return response.data;
   },
   getSystemHealth: () => axiosInstance.get("/admin/health"),
+
+  // --- INCIDENT REPORT APIs ---
+  createIncidentReport: async (data: IncidentReportRequestData): Promise<ApiResponse<IncidentReportResponse>> => {
+    const response = await axiosInstance.post("/v1/incidents", data);
+    return response.data;
+  },
+  getIncidentReports: async (status?: string): Promise<ApiResponse<IncidentReportResponse[]>> => {
+    const response = await axiosInstance.get("/v1/incidents", {
+      params: status ? { status } : {},
+    });
+    return response.data;
+  },
+  updateIncidentStatus: async (id: number, status: string): Promise<ApiResponse<IncidentReportResponse>> => {
+    const response = await axiosInstance.put(`/v1/incidents/${id}/status`, null, {
+      params: { status },
+    });
+    return response.data;
+  },
+  checkNeighborhood: async (data: LocationCheckRequest): Promise<ApiResponse<NeighborhoodSafetyResponse>> => {
+    const response = await axiosInstance.post("/v1/safety/neighborhood", data);
+    return response.data;
+  },
+  getMyIncidentReports: async (): Promise<ApiResponse<IncidentReportResponse[]>> => {
+    const response = await axiosInstance.get("/v1/incidents/my-reports");
+    return response.data;
+  },
+  getIncidentStats: async (): Promise<ApiResponse<IncidentStats>> => {
+    const response = await axiosInstance.get("/v1/incidents/stats");
+    return response.data;
+  },
+  getPublicNotifications: async (): Promise<ApiResponse<NotificationItem[]>> => {
+    const response = await axiosInstance.get("/v1/notifications");
+    return response.data;
+  },
 };

@@ -78,9 +78,7 @@ export default function RescueDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ message, type });
-  };
+
 
   // Load real data from API
   const loadData = useCallback(async () => {
@@ -117,7 +115,7 @@ export default function RescueDashboard() {
       setCompletedMissions(mappedMissions.filter((m) => m.status === 'completed'));
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu SOS:", error);
-      showToast('Lỗi tải dữ liệu. Vui lòng thử lại.', 'error');
+      showToast('danger', 'Lỗi hệ thống', 'Lỗi tải dữ liệu. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -171,7 +169,7 @@ export default function RescueDashboard() {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-    showToast('Đã cập nhật danh sách nhiệm vụ', 'info');
+    showToast('info', 'Thông báo', 'Đã cập nhật danh sách nhiệm vụ');
   };
 
   // Nhận nhiệm vụ (API Call)
@@ -181,12 +179,12 @@ export default function RescueDashboard() {
       // Thay đổi state tạm thời để UI cập nhật mượt hơn
       setPendingMissions((prev) => prev.filter((m) => m.id !== mission.id));
       setActiveMissions((prev) => [...prev, { ...mission, status: 'accepted' }]);
-      showToast(`Đã nhận nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
+      showToast('info', 'Nhận nhiệm vụ', `Đã nhận nhiệm vụ ${mission.id} - ${mission.requesterName}`);
       // Có thể gọi lại loadData() để đồng bộ toàn bộ
       // loadData();
     } catch (error) {
       console.error(error);
-      showToast('Lỗi nhận nhiệm vụ', 'error');
+      showToast('danger', 'Lỗi', 'Lỗi nhận nhiệm vụ');
     }
   };
 
@@ -196,10 +194,10 @@ export default function RescueDashboard() {
       await ApiClient.completeRescueSosRequest(mission.id as number);
       setActiveMissions((prev) => prev.filter((m) => m.id !== mission.id));
       setCompletedMissions((prev) => [...prev, { ...mission, status: 'completed' }]);
-      showToast(`✅ Hoàn thành nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
+      showToast('info', 'Hoàn thành', `Hoàn thành nhiệm vụ ${mission.id} - ${mission.requesterName}`);
     } catch (error) {
       console.error(error);
-      showToast('Lỗi hoàn thành nhiệm vụ', 'error');
+      showToast('danger', 'Lỗi', 'Lỗi hoàn thành nhiệm vụ');
     }
   };
 
