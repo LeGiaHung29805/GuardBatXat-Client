@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Camera, ImageIcon, Send, Loader2, X, ChevronDown } from 'lucide-react';
+import { Camera, ImageIcon, Send, Loader2, X, ChevronDown, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export interface FieldUpdateData {
@@ -15,6 +15,7 @@ export interface FieldUpdateData {
 
 interface FieldUpdateProps {
   missionId: string;
+  phoneNumber?: string;
   onUpdateSent?: (update: FieldUpdateData) => void;
 }
 
@@ -28,7 +29,7 @@ const statusOptions = [
 const MAX_IMAGES = 5;
 const MAX_FILE_SIZE_MB = 5;
 
-export default function FieldUpdate({ missionId, onUpdateSent }: FieldUpdateProps) {
+export default function FieldUpdate({ missionId, phoneNumber, onUpdateSent }: FieldUpdateProps) {
   const [selectedStatus, setSelectedStatus] = useState<'en_route' | 'arrived' | 'rescuing' | 'completed'>('en_route');
   const [message, setMessage] = useState('');
   const [images, setImages] = useState<string[]>([]);
@@ -84,6 +85,14 @@ export default function FieldUpdate({ missionId, onUpdateSent }: FieldUpdateProp
 
       await new Promise((resolve) => setTimeout(resolve, 800));
       onUpdateSent?.(updateData);
+
+      if (phoneNumber) {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        const separator = isIOS ? '&' : '?';
+        const smsBody = encodeURIComponent(`[GuardBatXat] Cập nhật cứu hộ: ${currentStatus.label}. ${message}`);
+        window.location.href = `sms:${phoneNumber}${separator}body=${smsBody}`;
+      }
+
       setMessage(''); setImages([]); setShowForm(false);
     } catch (error) {
       console.error('Lỗi gửi cập nhật:', error);

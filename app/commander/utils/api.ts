@@ -7,7 +7,9 @@ interface ApiError {
 
 class ApiService {
   private async fetchWithAuth(url: string, options: RequestInit = {}) {
-    const token = localStorage.getItem("token");
+    // Dùng đúng key token chuẩn của hệ thống (đăng nhập chính lưu "jwt_token")
+    const token =
+      localStorage.getItem("jwt_token") || localStorage.getItem("token");
     
     const headers = {
       "Content-Type": "application/json",
@@ -81,11 +83,23 @@ class ApiService {
     return this.fetchWithAuth(`/commander/analysis/damage-trend`);
   }
 
+  async getCommuneRanking(level: string) {
+    return this.fetchWithAuth(`/commander/analysis/commune-ranking?level=${level}`);
+  }
+
+  async getWaterForecast() {
+    return this.fetchWithAuth(`/commander/analysis/water-forecast`);
+  }
+
   // ==================== ĐIỀU HÀNH SƠ TÁN ====================
   async activateEvacuation(level: string, radius: number = 1000) {
     return this.fetchWithAuth(`/commander/evacuation/activate?level=${level}&radius=${radius}`, {
       method: "POST",
     });
+  }
+
+  async getEvacuationCenter(level: string) {
+    return this.fetchWithAuth(`/commander/evacuation/center?level=${level}`);
   }
 
   // ==================== CẢNH BÁO (ALERTS) ====================
@@ -106,26 +120,32 @@ class ApiService {
   }
 
   // ==================== AUTH ====================
-  async login(username: string, password: string) {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  async login(identifier: string, password: string) {
+    const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ identifier, password }),
     });
 
-    if (!response.ok) throw new Error("Login failed");
+    const json = await response.json().catch(() => null);
 
-    const data = await response.json();
-    localStorage.setItem("token", data.token);
-    return data;
+    if (!response.ok || !json || json.code !== 200) {
+      throw new Error(json?.message || "Đăng nhập thất bại");
+    }
+
+    // Backend trả ApiResponse: token JWT nằm trong trường "data"
+    const token = json.data;
+    localStorage.setItem("jwt_token", token);
+    return token;
   }
 
   async logout() {
+    localStorage.removeItem("jwt_token");
     localStorage.removeItem("token");
   }
 
   async getProfile() {
-    return this.fetchWithAuth("/commander/profile");
+    return this.fetchWithAuth("/v1/users/me");
   }
 }
 

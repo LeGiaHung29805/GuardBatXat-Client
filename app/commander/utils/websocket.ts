@@ -7,18 +7,18 @@ class WebSocketService {
   private client: Client | null = null;
   // Giữ lại cơ chế on() cũ
   private handlers: Map<string, MessageHandler[]> = new Map();
-  
+
   // Cơ chế mới: Quản lý các topic STOMP động
   private activeSubscriptions: Map<string, StompSubscription> = new Map();
   private pendingSubscriptions: Map<string, MessageHandler> = new Map();
 
   connect(token: string) {
-    const wsUrl = process.env.NEXT_PUBLIC_API_URL 
-        ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '/ws-guardbatxat') 
-        : "http://localhost:8080/ws-guardbatxat";
+    const wsUrl = process.env.NEXT_PUBLIC_API_URL
+      ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '/ws-guardbatxat')
+      : "http://localhost:8080/ws-guardbatxat";
 
     this.client = new Client({
-      webSocketFactory: () => new SockJS(wsUrl),
+      webSocketFactory: () => new SockJS(`${window.location.origin}/ws`),
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
@@ -32,14 +32,14 @@ class WebSocketService {
 
     this.client.onConnect = (frame) => {
       console.log("✅ Đã kết nối WebSocket (STOMP) thành công!");
-      
+
       // Đăng ký cứng kênh cũ để tương thích ngược
       this.client?.subscribe('/topic/alerts', (message) => {
         if (message.body) {
           try {
             const data = JSON.parse(message.body);
-            this.handleMessage(data); 
-          } catch(e) {}
+            this.handleMessage(data);
+          } catch (e) { }
         }
       });
 
@@ -94,7 +94,7 @@ class WebSocketService {
   }
 
   // --- CƠ CHẾ CŨ (Tương thích với mã nguồn hiện tại) ---
-  private handleMessage(message: { type: string; [key: string]: any }) {
+  private handleMessage(message: { type: string;[key: string]: any }) {
     const handlers = this.handlers.get(message.type);
     if (handlers) {
       handlers.forEach((handler) => handler(message));

@@ -15,8 +15,22 @@ export default function HeatmapLayer({ points, options }: HeatmapProps) {
   useEffect(() => {
     if (!map || points.length === 0) return;
 
+    // Lọc bỏ các điểm lỗi (NaN, ngoài phạm vi tọa độ/cường độ) để tránh hỏng cả lớp nhiệt
+    const filteredPoints = points.filter((point) => {
+      if (!Array.isArray(point)) return false;
+      const [lat, lng, intensity] = point;
+      return (
+        typeof lat === "number" && typeof lng === "number" && typeof intensity === "number" &&
+        !isNaN(lat) && !isNaN(lng) && !isNaN(intensity) &&
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 &&
+        intensity >= 0 && intensity <= 1
+      );
+    });
+
+    if (filteredPoints.length === 0) return;
+
     // ĐÃ SỬA: Lấy thông số từ options truyền vào, nếu không có thì dùng mặc định
-    const heatLayer = (L as any).heatLayer(points, {
+    const heatLayer = (L as any).heatLayer(filteredPoints, {
       radius: options?.radius || 25,
       blur: options?.blur || 15,
       maxZoom: options?.maxZoom || 18,

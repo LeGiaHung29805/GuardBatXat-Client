@@ -8,20 +8,31 @@ import AlertTab from "./components/AlertTab";
 import api from "./utils/api";
 import websocket from "./utils/websocket";
 import type { ScenarioLevel, DamageStats, NotificationLog } from "./types";
-import { 
-  ShieldAlert, 
-  Map, 
-  Siren, 
-  TrendingUp, 
+import {
+  ShieldAlert,
+  Map,
+  Siren,
+  TrendingUp,
   Megaphone,
-  Loader2
-} from "lucide-react"; 
+  Loader2,
+} from "lucide-react";
 import ToastContainer, { showToast } from "@/components/ui/Toast";
 
+// Tổng số dân ước tính của khu vực Bát Xát (dùng làm số người dân nhận cảnh báo diện rộng).
+// Đây là con số dân số toàn vùng, không phải số thiết bị; broadcast gửi tới toàn bộ người dân trong vùng.
+const BAT_XAT_POPULATION = 3241;
+
 export default function PCTTCommanderDashboard() {
-  const [activeTab, setActiveTab] = useState<"monitor" | "evacuate" | "analyze" | "alert">("monitor");
-  const [scenarios, setScenarios] = useState<ScenarioLevel[]>(["80m", "82m", "83.5m"]);
-  const [selectedScenario, setSelectedScenario] = useState<ScenarioLevel>("80m");
+  const [activeTab, setActiveTab] = useState<
+    "monitor" | "evacuate" | "analyze" | "alert"
+  >("monitor");
+  const [scenarios, setScenarios] = useState<ScenarioLevel[]>([
+    "80m",
+    "82m",
+    "83.5m",
+  ]);
+  const [selectedScenario, setSelectedScenario] =
+    useState<ScenarioLevel>("80m");
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>("Đang cập nhật...");
 
@@ -40,9 +51,9 @@ export default function PCTTCommanderDashboard() {
   useEffect(() => {
     setLastUpdate(new Date().toLocaleString("vi-VN"));
     setupWebSocket();
-    fetchAlertHistory(); 
+    fetchAlertHistory();
     fetchScenarios();
-    
+
     return () => {
       websocket.disconnect();
     };
@@ -54,7 +65,7 @@ export default function PCTTCommanderDashboard() {
       if (data && data.length > 0) {
         setScenarios(data);
         if (!data.includes(selectedScenario)) {
-            setSelectedScenario(data[0]);
+          setSelectedScenario(data[0]);
         }
       }
     } catch (e) {
@@ -69,12 +80,12 @@ export default function PCTTCommanderDashboard() {
   const fetchDataForScenario = async () => {
     try {
       setLoading(true);
-      const levelNumber = selectedScenario.replace('m', ''); 
+      const levelNumber = selectedScenario.replace("m", "");
 
       const [statsRes, floodRes, landslideRes] = await Promise.all([
         api.getDashboardStats(levelNumber),
         api.getCommanderFloodHeatmap(levelNumber),
-        api.getCommanderLandslideHeatmap()
+        api.getCommanderLandslideHeatmap(),
       ]);
 
       setDamageStats({
@@ -87,7 +98,6 @@ export default function PCTTCommanderDashboard() {
       setFloodPoints(floodRes as any[]);
       setLandslidePoints(landslideRes as any[]);
       setLastUpdate(new Date().toLocaleString("vi-VN"));
-
     } catch (error) {
       console.error("Lỗi khi kéo dữ liệu Backend:", error);
     } finally {
@@ -96,22 +106,23 @@ export default function PCTTCommanderDashboard() {
   };
 
   const setupWebSocket = () => {
-    const token = localStorage.getItem("token") || "guest";
+    const token =
+      localStorage.getItem("jwt_token") || localStorage.getItem("token") || "guest";
     websocket.connect(token);
 
     // Lắng nghe API cũ
     websocket.on("MANUAL_ALERT", (data) => {
       console.log("Nhận được thông báo mới qua WebSocket:", data);
-      fetchAlertHistory(); 
+      fetchAlertHistory();
     });
 
     // Lắng nghe tín hiệu SOS khẩn cấp
     websocket.subscribe("/topic/emergency", (data) => {
       console.log("Nhận được tín hiệu SOS:", data);
       showToast(
-        "danger", 
-        "TÍN HIỆU SOS KHẨN CẤP", 
-        `Nạn nhân: ${data.senderPhone || "Không rõ"}\nTin nhắn: ${data.message}\nTọa độ: [${data.lat}, ${data.lng}]`
+        "danger",
+        "TÍN HIỆU SOS KHẨN CẤP",
+        `Nạn nhân: ${data.senderPhone || "Không rõ"}\nTin nhắn: ${data.message}\nTọa độ: [${data.lat}, ${data.lng}]`,
       );
     });
 
@@ -122,7 +133,7 @@ export default function PCTTCommanderDashboard() {
         showToast(
           data.alertLevel === "DANGER" ? "danger" : "warning",
           "HỆ THỐNG CẢNH BÁO RỦI RO",
-          data.message
+          data.message,
         );
       }
     });
@@ -139,17 +150,20 @@ export default function PCTTCommanderDashboard() {
   };
 
   const handleActivateEvacuation = async (radius: number) => {
-    if (!confirm(`Xác nhận KÍCH HOẠT lệnh sơ tán khẩn cấp cho mốc ${selectedScenario} với bán kính ${radius}m?`)) {
+    if (
+      !confirm(
+        `Xác nhận KÍCH HOẠT lệnh sơ tán khẩn cấp cho mốc ${selectedScenario} với bán kính ${radius}m?`,
+      )
+    ) {
       return;
     }
 
     try {
       setLoading(true);
-      const levelNumber = selectedScenario.replace('m', '');
+      const levelNumber = selectedScenario.replace("m", "");
       const response: any = await api.activateEvacuation(levelNumber, radius);
-      
+
       showToast("info", "Thông báo", response);
-      
     } catch (error: any) {
       showToast("danger", "Lỗi", error.message);
     } finally {
@@ -157,18 +171,18 @@ export default function PCTTCommanderDashboard() {
     }
   };
 
-  const handleSendAlert = async (message: string) => {
+  const handleSendAlert = async (message: string, level: string = "WARNING") => {
     try {
       setLoading(true);
       await api.sendAlert({
         title: "CẢNH BÁO TỪ BAN CHỈ HUY",
         content: message,
-        level: "WARNING",
-        targetArea: "Tất cả" 
+        level,
+        targetArea: "Tất cả",
       });
 
       showToast("info", "Thành công", "Đã phát loa cảnh báo thành công!");
-      fetchAlertHistory(); 
+      fetchAlertHistory();
     } catch (error: any) {
       showToast("danger", "Lỗi", error.message);
     } finally {
@@ -179,15 +193,15 @@ export default function PCTTCommanderDashboard() {
   const fetchAlertHistory = async () => {
     try {
       const history: any = await api.getAlertHistory();
-      
-      const formattedHistory = history.map((item: any) => ({
-        id: item.notify_id.toString(),
-        message: `[${item.target_area}] ${item.title} - ${item.content}`,
-        sentTo: 3241, 
-        timestamp: item.thoi_gian,
-        status: "sent"
+
+      const formattedHistory = (history ?? []).map((item: any) => ({
+        id: item.notifyId?.toString() ?? "",
+        message: `[${item.targetArea}] ${item.title} - ${item.content}`,
+        sentTo: BAT_XAT_POPULATION,
+        timestamp: item.time,
+        status: "sent",
       }));
-      
+
       setNotifications(formattedHistory);
     } catch (error) {
       console.error("Lỗi khi tải lịch sử cảnh báo:", error);
@@ -197,14 +211,18 @@ export default function PCTTCommanderDashboard() {
   const navTabs = [
     { id: "monitor", label: "Bản đồ Chỉ huy", icon: <Map size={18} /> },
     { id: "evacuate", label: "Kịch bản sơ tán", icon: <Siren size={18} /> },
-    { id: "analyze", label: "Phân tích thiệt hại", icon: <TrendingUp size={18} /> },
+    {
+      id: "analyze",
+      label: "Phân tích thiệt hại",
+      icon: <TrendingUp size={18} />,
+    },
     { id: "alert", label: "Phát cảnh báo", icon: <Megaphone size={18} /> },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 text-white relative">
       <ToastContainer />
-      
+
       {loading && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-gray-800/90 border border-gray-700 rounded-2xl p-8 flex flex-col items-center shadow-2xl">
@@ -222,14 +240,20 @@ export default function PCTTCommanderDashboard() {
                 <ShieldAlert size={28} className="text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Trung tâm Chỉ huy PCTT</h1>
-                <p className="text-gray-400 text-sm mt-0.5">Cấp Xã/Thôn - Huyện Bát Xát, Lào Cai</p>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Trung tâm Chỉ huy PCTT
+                </h1>
+                <p className="text-gray-400 text-sm mt-0.5">
+                  Cấp Xã/Thôn - Huyện Bát Xát, Lào Cai
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <div className="text-sm text-gray-400">Đồng bộ cuối cùng</div>
-                <div className="text-lg font-semibold text-blue-100">{lastUpdate}</div>
+                <div className="text-lg font-semibold text-blue-100">
+                  {lastUpdate}
+                </div>
               </div>
               <div className="bg-green-500 w-3.5 h-3.5 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
             </div>
@@ -264,8 +288,8 @@ export default function PCTTCommanderDashboard() {
             scenarios={scenarios}
             selectedScenario={selectedScenario}
             onScenarioChange={handleScenarioChange}
-            floodData={floodPoints}        
-            landslideData={landslidePoints} 
+            floodData={floodPoints}
+            landslideData={landslidePoints}
           />
         )}
         {activeTab === "evacuate" && (
@@ -273,14 +297,15 @@ export default function PCTTCommanderDashboard() {
             scenarios={scenarios}
             selectedScenario={selectedScenario}
             damageStats={damageStats}
+            floodData={floodPoints}
             onActivate={handleActivateEvacuation}
           />
         )}
         {activeTab === "analyze" && (
-          <AnalyzeTab 
+          <AnalyzeTab
             scenarios={scenarios}
-            selectedScenario={selectedScenario} 
-            damageStats={damageStats} 
+            selectedScenario={selectedScenario}
+            damageStats={damageStats}
           />
         )}
         {activeTab === "alert" && (

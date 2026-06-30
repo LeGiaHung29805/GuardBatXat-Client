@@ -15,11 +15,18 @@ import {
 
 interface Props {
   notifications: NotificationLog[];
-  onSendAlert: (message: string) => void;
+  onSendAlert: (message: string, level: string) => void;
 }
+
+const ALERT_LEVELS = [
+  { value: "INFO", label: "Thông tin", color: "blue" },
+  { value: "WARNING", label: "Cảnh báo", color: "orange" },
+  { value: "EMERGENCY", label: "Khẩn cấp", color: "red" },
+];
 
 export default function AlertTab({ notifications, onSendAlert }: Props) {
   const [alertMessage, setAlertMessage] = useState("");
+  const [alertLevel, setAlertLevel] = useState("WARNING");
 
   const quickTemplates = [
     "CẢNH BÁO: Mưa lớn dự kiến trong 2 giờ tới. Người dân cần đề phòng ngập úng.",
@@ -33,7 +40,7 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
       alert("Vui lòng nhập nội dung cảnh báo!");
       return;
     }
-    onSendAlert(alertMessage);
+    onSendAlert(alertMessage, alertLevel);
     setAlertMessage("");
   };
 
@@ -51,6 +58,31 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
           <PenLine size={24} className="text-blue-400" />
           Soạn Cảnh báo Mới
         </h3>
+
+        {/* Chọn cấp độ cảnh báo */}
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-sm text-gray-400">Cấp độ:</span>
+          <div className="flex gap-2">
+            {ALERT_LEVELS.map((lvl) => {
+              const isActive = alertLevel === lvl.value;
+              const activeColor =
+                lvl.color === "red" ? "bg-red-600 border-red-400" :
+                lvl.color === "orange" ? "bg-orange-600 border-orange-400" :
+                "bg-blue-600 border-blue-400";
+              return (
+                <button
+                  key={lvl.value}
+                  onClick={() => setAlertLevel(lvl.value)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold border-2 transition-all ${
+                    isActive ? `${activeColor} text-white shadow-md` : "bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
+                  }`}
+                >
+                  {lvl.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <textarea
           value={alertMessage}
           onChange={(e) => setAlertMessage(e.target.value)}
@@ -138,7 +170,7 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
                 </div>
                 <div className="text-sm text-gray-400 mt-2 border-t border-gray-600/50 pt-2 flex items-center gap-2">
                   <Target size={14} />
-                  Đã phát tới: <span className="font-bold text-white">{notif.sentTo.toLocaleString()}</span> thiết bị
+                  Đã phát tới: <span className="font-bold text-white">{notif.sentTo.toLocaleString()}</span> người dân (toàn khu vực)
                 </div>
               </div>
             ))
