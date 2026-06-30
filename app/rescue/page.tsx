@@ -151,7 +151,7 @@ export default function RescueDashboard() {
     // Lắng nghe tín hiệu SOS khẩn cấp
     websocket.subscribe("/topic/emergency", (data) => {
       console.log("Nhận được tín hiệu SOS:", data);
-      apiShowToast(
+      showToast(
         "danger",
         "TÍN HIỆU SOS KHẨN CẤP",
         `Nạn nhân: ${data.senderPhone || "Không rõ"}\nTin nhắn: ${data.message}\nTọa độ: [${data.lat}, ${data.lng}]`
