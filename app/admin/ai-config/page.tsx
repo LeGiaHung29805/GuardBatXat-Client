@@ -56,7 +56,7 @@ export default function AdminAiConfigPage() {
         </div>
       </div>
 
-      <div className="bg-white p-10 rounded-[2rem] border border-slate-100 shadow-sm mb-10">
+      <div className="bg-white p-5 sm:p-8 md:p-10 rounded-[2rem] border border-slate-100 shadow-sm mb-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Object.entries(weights).map(([k, v]) => (
             <div

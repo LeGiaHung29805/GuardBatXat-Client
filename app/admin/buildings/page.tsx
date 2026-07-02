@@ -105,7 +105,8 @@ export default function AdminBuildingsPage() {
       </div>
 
       <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm flex flex-col">
-        <div className="overflow-x-auto">
+        {/* DESKTOP TABLE VIEW */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase font-black tracking-widest border-b border-slate-100">
               <tr>
@@ -128,7 +129,6 @@ export default function AdminBuildingsPage() {
                 </tr>
               ) : currentItems.length > 0 ? (
                 currentItems.map((b: any, index: number) => {
-                  // Bắt mọi trường hợp đặt tên biến từ JSON của Spring Boot (Jackson)
                   const id = b.id ?? "N/A";
                   const type = b.buildingType ?? b.buildingtype ?? "Dân dụng";
                   const area =
@@ -136,7 +136,6 @@ export default function AdminBuildingsPage() {
                   const capacity =
                     b.maxCapacity ?? b.maxcapacity ?? b.max_capacity ?? 0;
 
-                  // Key chống trùng lặp 100%
                   const uniqueKey = `bld-${id}-${index}`;
 
                   return (
@@ -181,6 +180,62 @@ export default function AdminBuildingsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* MOBILE CARD VIEW */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="p-10 text-center text-slate-400 animate-pulse font-medium">
+              Đang tải dữ liệu hạ tầng...
+            </div>
+          ) : currentItems.length > 0 ? (
+            currentItems.map((b: any, index: number) => {
+              const id = b.id ?? "N/A";
+              const type = b.buildingType ?? b.buildingtype ?? "Dân dụng";
+              const area =
+                b.areaInMeters ?? b.areainmeters ?? b.area_in_meters ?? 0;
+              const capacity =
+                b.maxCapacity ?? b.maxcapacity ?? b.max_capacity ?? 0;
+              const uniqueKey = `bld-card-${id}-${index}`;
+
+              return (
+                <div key={uniqueKey} className="p-5 flex flex-col gap-3 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono font-bold text-slate-700">
+                      {id !== "N/A" ? `BLD-${id}` : "N/A"}
+                    </span>
+                    <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wide">
+                      {type}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-[11px] text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <div>
+                      <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Diện tích</span>
+                      <span className="font-mono text-blue-600 font-bold">{Number(area).toFixed(1)} m²</span>
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Sức chứa</span>
+                      <span className="text-slate-700 font-bold">{capacity} người</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1 border-t border-slate-50">
+                    <button className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1">
+                      <Edit size={14} /> Sửa
+                    </button>
+                    <button className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition flex items-center gap-1">
+                      <Trash2 size={14} /> Xóa
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-10 text-center text-slate-400 font-medium">
+              Không tìm thấy dữ liệu
+            </div>
+          )}
         </div>
 
         {/* --- KHỐI ĐIỀU KHIỂN PHÂN TRANG --- */}

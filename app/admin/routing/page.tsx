@@ -24,6 +24,9 @@ export default function AdminRoutingPage() {
     rescue: [],
   });
 
+  // State điều khiển đóng/mở panel trên di động
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
   // Tọa độ UBND Huyện Bát Xát (Thực tế)
   useEffect(() => {
     setStartLoc({ lat: 22.5458, lng: 103.8895 });
@@ -50,6 +53,10 @@ export default function AdminRoutingPage() {
           safety: res.data.safetyPath || [],
           rescue: res.data.rescuePath || [],
         });
+        // Tự động thu nhỏ panel trên di động sau khi bấm so sánh để xem bản đồ
+        if (window.innerWidth < 768) {
+          setIsPanelOpen(false);
+        }
       }
     } catch (error) {
       alert("Khu vực bị cô lập. Không tìm thấy đường thực tế!");
@@ -60,35 +67,67 @@ export default function AdminRoutingPage() {
   };
 
   return (
-    // DÙNG -m-10 ĐỂ BUNG TRÀN KHỎI PADDING CỦA LAYOUT CHUNG, h-screen ĐỂ FULL CHIỀU CAO
-    <div className="-m-10 flex h-screen bg-white overflow-hidden relative">
+    // DÙNG LỚP BIÊN ÂM RESPONSIVE, h-full HOẶC h-[calc(100vh-68px)] TRÊN DI ĐỘNG ĐỂ KHÔNG BỊ TRÀN VIEWPORT
+    <div className="-m-5 sm:-m-8 md:-m-10 flex flex-col md:flex-row h-[calc(100vh-68px)] md:h-screen bg-white overflow-hidden relative">
       {/* 1. BẢN ĐỒ: flex-1 chiếm toàn bộ phần diện tích còn lại */}
-      <div className="flex-1 relative z-0">
+      <div className="flex-1 h-full w-full relative z-0">
         <AdminCompareMap
           startLoc={startLoc}
           destLoc={destLoc}
-          setDestLoc={handleMapClick} // ĐỔI setDestLoc THÀNH handleMapClick Ở ĐÂY
+          setDestLoc={handleMapClick}
           routes={routes}
         />
+
+        {/* Nút nổi mở điều khiển trên di động */}
+        <button
+          onClick={() => setIsPanelOpen(true)}
+          className="md:hidden absolute bottom-5 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white px-5 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 hover:bg-black transition active:scale-95 text-xs tracking-wider uppercase"
+        >
+          <span>So sánh Lộ trình</span>
+          {destLoc && <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />}
+        </button>
       </div>
 
-      {/* 2. PANEL ĐIỀU KHIỂN: Ghim sát mép phải, có bóng đổ mạnh (shadow-2xl) phân tách với bản đồ */}
-      <div className="w-80 bg-white p-6 shadow-2xl z-10 flex flex-col border-l border-slate-200">
-        <h1 className="text-xl font-black text-slate-800 mb-4">
-          Kiểm chứng AI
-        </h1>
+      {/* LỚP PHỦ MỜ CHO PANEL DI ĐỘNG */}
+      {isPanelOpen && (
+        <div
+          onClick={() => setIsPanelOpen(false)}
+          className="fixed inset-0 bg-black/50 z-20 md:hidden backdrop-blur-xs transition-opacity duration-300"
+        />
+      )}
+
+      {/* 2. PANEL ĐIỀU KHIỂN: Ghim sát mép phải (desktop) hoặc biến thành Bottom Sheet (di động) */}
+      <div
+        className={`fixed inset-x-0 bottom-0 md:static md:inset-auto z-30 w-full md:w-80 bg-white p-6 shadow-2xl md:shadow-none flex flex-col border-t md:border-t-0 md:border-l border-slate-200 transition-transform duration-300 rounded-t-[2rem] md:rounded-none max-h-[80vh] md:max-h-none overflow-y-auto ${
+          isPanelOpen ? "translate-y-0" : "translate-y-full md:translate-y-0"
+        }`}
+      >
+        {/* Thanh kéo / Nhận diện kéo Bottom Sheet trên mobile */}
+        <div className="md:hidden w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 cursor-pointer" onClick={() => setIsPanelOpen(false)} />
+
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-black text-slate-800">
+            Kiểm chứng AI
+          </h1>
+          <button
+            onClick={() => setIsPanelOpen(false)}
+            className="md:hidden p-1 text-slate-400 hover:text-slate-600 transition"
+          >
+            Đóng
+          </button>
+        </div>
 
         <button
           onClick={handleCompareRoutes}
           disabled={loading || !destLoc}
-          className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 mb-6 transition-all shadow-lg shadow-blue-500/40 text-sm"
+          className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed mb-6 transition-all shadow-lg shadow-blue-500/25 text-sm"
         >
           {loading ? "Đang phân tích..." : "So sánh Lộ trình"}
         </button>
 
         {/* BẢNG CHÚ THÍCH (LEGEND) */}
-        <div className="space-y-6 border-t border-slate-100 pt-6">
-          <h3 className="font-bold text-[11px] text-slate-400 uppercase tracking-widest">
+        <div className="space-y-5 border-t border-slate-100 pt-5">
+          <h3 className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">
             Chú giải lộ trình
           </h3>
 
@@ -130,9 +169,9 @@ export default function AdminRoutingPage() {
         </div>
 
         {/* Hướng dẫn nho nhỏ ở dưới cùng */}
-        <div className="mt-auto bg-blue-50 p-4 rounded-xl border border-blue-100">
-          <p className="text-[12px] text-blue-600 font-medium leading-relaxed text-center">
-            Click bản đồ để chọn đích <br /> sau đó bấm "So sánh"
+        <div className="mt-6 md:mt-auto bg-blue-50 p-4 rounded-xl border border-blue-100">
+          <p className="text-[12px] text-blue-600 font-semibold leading-relaxed text-center">
+            {destLoc ? "Đã chọn điểm đích. Nhấn nút So sánh!" : "Chạm bản đồ để chọn điểm đích, sau đó bấm So sánh"}
           </p>
         </div>
       </div>

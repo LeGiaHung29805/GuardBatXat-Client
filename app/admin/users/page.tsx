@@ -203,9 +203,10 @@ export default function AdminUserPage() {
         />
       </div>
 
-      {/* TABLE */}
+      {/* TABLE/CARDS CONTAINER */}
       <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm flex flex-col">
-        <div className="overflow-x-auto">
+        {/* DESKTOP TABLE VIEW */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase font-black tracking-widest border-b border-slate-100">
               <tr>
@@ -258,7 +259,6 @@ export default function AdminUserPage() {
                         </span>
                       </td>
                       <td className="p-6 text-center space-x-2">
-                        {/* ĐÃ GẮN SỰ KIỆN SỬA VÀO ĐÂY */}
                         <button
                           onClick={() => handleEdit(user)}
                           className="p-2 text-slate-300 hover:text-blue-600 transition"
@@ -287,6 +287,87 @@ export default function AdminUserPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* MOBILE CARD VIEW */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="p-10 text-center text-slate-400 animate-pulse font-medium">
+              Đang tải dữ liệu...
+            </div>
+          ) : currentItems.length > 0 ? (
+            currentItems.map((user: any, index: number) => {
+              const roleDisplay = user.roleName ?? user.role ?? "N/A";
+              const userId = user.userId ?? user.id ?? index;
+
+              return (
+                <div key={`user-card-${userId}-${index}`} className="p-5 flex flex-col gap-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">
+                        {user.fullName || "Chưa cập nhật"}
+                      </h4>
+                      <p className="text-xs text-slate-400 font-mono mt-0.5">
+                        {user.username}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2 py-1 rounded text-[8px] font-black tracking-wide uppercase ${
+                        roleDisplay === "ADMIN"
+                          ? "bg-red-100 text-red-600"
+                          : roleDisplay === "RESCUE_TEAM"
+                            ? "bg-blue-100 text-blue-600"
+                            : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {roleDisplay}
+                    </span>
+                  </div>
+
+                  {(user.email || user.phoneNumber) && (
+                    <div className="space-y-1 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                      {user.email && (
+                        <div>
+                          <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider mr-1">Email:</span>
+                          <span className="font-medium text-slate-600">{user.email}</span>
+                        </div>
+                      )}
+                      {user.phoneNumber && (
+                        <div>
+                          <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider mr-1">SĐT:</span>
+                          <span className="font-mono text-slate-600">{user.phoneNumber}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      ID: #{userId}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEdit(user)}
+                        className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold transition flex items-center gap-1"
+                      >
+                        <Edit size={14} /> Sửa
+                      </button>
+                      <button
+                        onClick={() => handleDelete(userId)}
+                        className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition flex items-center gap-1"
+                      >
+                        <Trash2 size={14} /> Xóa
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-10 text-center text-slate-400 font-medium">
+              Không tìm thấy tài khoản nào.
+            </div>
+          )}
         </div>
 
         {/* --- KHỐI ĐIỀU KHIỂN PHÂN TRANG --- */}
@@ -341,7 +422,7 @@ export default function AdminUserPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">
                     Tên đăng nhập
@@ -366,8 +447,8 @@ export default function AdminUserPage() {
                     value={formData.password}
                     onChange={handleInputChange}
                     type="password"
-                    placeholder={editingUserId ? "Bỏ trống để giữ nguyên" : ""}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium placeholder:text-xs"
+                    placeholder={editingUserId ? "Bỏ trống để giữ nguyên" : ""}
                   />
                 </div>
               </div>
@@ -386,7 +467,7 @@ export default function AdminUserPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">
                     Email
@@ -414,7 +495,7 @@ export default function AdminUserPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">
                     Vai trò (Role)

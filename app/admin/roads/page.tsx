@@ -109,7 +109,8 @@ export default function AdminRoadsPage() {
       </div>
 
       <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm flex flex-col">
-        <div className="overflow-x-auto">
+        {/* DESKTOP TABLE VIEW */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase font-black tracking-widest border-b border-slate-100">
               <tr>
@@ -134,14 +135,12 @@ export default function AdminRoadsPage() {
                 </tr>
               ) : currentItems.length > 0 ? (
                 currentItems.map((r: any, index: number) => {
-                  // Hứng mọi trường hợp đặt tên biến từ JSON của Spring Boot
                   const u = r.uNode ?? r.unode ?? r.UNode ?? r.u ?? "N/A";
                   const v = r.vNode ?? r.vnode ?? r.VNode ?? r.v ?? "N/A";
                   const edgeKey = r.edgeKey ?? r.edgekey ?? r.id ?? 0;
                   const length = r.lengthM ?? r.lengthm ?? r.length_m ?? 0;
                   const slope = r.avgSlope ?? r.avgslope ?? r.avg_slope ?? 0;
 
-                  // Thêm index vào cuối để đảm bảo key độc nhất 100% trong mọi tình huống
                   const uniqueKey = `${u}-${v}-${edgeKey}-${index}`;
 
                   return (
@@ -183,6 +182,68 @@ export default function AdminRoadsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* MOBILE CARD VIEW */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="p-10 text-center text-slate-400 animate-pulse font-medium">
+              Đang tải dữ liệu mạng lưới...
+            </div>
+          ) : currentItems.length > 0 ? (
+            currentItems.map((r: any, index: number) => {
+              const u = r.uNode ?? r.unode ?? r.UNode ?? r.u ?? "N/A";
+              const v = r.vNode ?? r.vnode ?? r.VNode ?? r.v ?? "N/A";
+              const edgeKey = r.edgeKey ?? r.edgekey ?? r.id ?? 0;
+              const length = r.lengthM ?? r.lengthm ?? r.length_m ?? 0;
+              const slope = r.avgSlope ?? r.avgslope ?? r.avg_slope ?? 0;
+              const uniqueKey = `road-card-${u}-${v}-${edgeKey}-${index}`;
+
+              return (
+                <div key={uniqueKey} className="p-5 flex flex-col gap-3 font-mono text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded text-[10px]">
+                      ID: {edgeKey}
+                    </span>
+                    <div className="flex gap-2">
+                      <button className="p-1.5 text-slate-400 hover:text-blue-600 transition">
+                        <Edit size={16} />
+                      </button>
+                      <button className="p-1.5 text-slate-400 hover:text-red-600 transition">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-slate-500 text-[11px]">
+                    <div>
+                      <span className="font-bold block text-[9px] uppercase tracking-wider text-slate-400">Từ Nút (Source)</span>
+                      <span className="text-slate-700">{u}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold block text-[9px] uppercase tracking-wider text-slate-400">Đến Nút (Target)</span>
+                      <span className="text-slate-700">{v}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-50 text-[11px]">
+                    <div>
+                      <span className="text-slate-400 uppercase text-[9px] font-bold tracking-wider mr-1">Dài:</span>
+                      <span className="text-blue-600 font-bold">{Number(length).toFixed(1)} m</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 uppercase text-[9px] font-bold tracking-wider mr-1">Dốc Max:</span>
+                      <span className="text-slate-700 font-bold">{Number(slope).toFixed(1)}°</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-10 text-center text-slate-400 font-medium">
+              Không tìm thấy dữ liệu
+            </div>
+          )}
         </div>
 
         {/* KHỐI ĐIỀU KHIỂN PHÂN TRANG */}
