@@ -78,8 +78,26 @@ export default function RescueDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ message, type });
+  const [deletedMissionIds, setDeletedMissionIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('rescue:deleted-completed');
+      if (stored) {
+        try {
+          setDeletedMissionIds(JSON.parse(stored));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
+
+  const deleteCompletedMission = (id: string) => {
+    const updated = [...deletedMissionIds, id];
+    setDeletedMissionIds(updated);
+    localStorage.setItem('rescue:deleted-completed', JSON.stringify(updated));
+    showToast('info', 'Thông báo', 'Đã xóa nhiệm vụ khỏi lịch sử');
   };
 
   // Load real data from API
@@ -117,7 +135,7 @@ export default function RescueDashboard() {
       setCompletedMissions(mappedMissions.filter((m) => m.status === 'completed'));
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu SOS:", error);
-      showToast('Lỗi tải dữ liệu. Vui lòng thử lại.', 'error');
+      showToast('danger', 'Lỗi hệ thống', 'Lỗi tải dữ liệu. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -171,35 +189,43 @@ export default function RescueDashboard() {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-    showToast('Đã cập nhật danh sách nhiệm vụ', 'info');
+    showToast('info', 'Thông báo', 'Đã cập nhật danh sách nhiệm vụ');
   };
 
   // Nhận nhiệm vụ (API Call)
   const acceptMission = async (mission: SOSRequest) => {
+    const numericId = Number(mission.id);
+    const isMockId = isNaN(numericId);
+
     try {
-      await ApiClient.acceptRescueSosRequest(mission.id as number);
+      if (!isMockId) {
+        await ApiClient.acceptRescueSosRequest(numericId);
+      }
       // Thay đổi state tạm thời để UI cập nhật mượt hơn
       setPendingMissions((prev) => prev.filter((m) => m.id !== mission.id));
       setActiveMissions((prev) => [...prev, { ...mission, status: 'accepted' }]);
-      showToast(`Đã nhận nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
-      // Có thể gọi lại loadData() để đồng bộ toàn bộ
-      // loadData();
+      showToast('info', 'Nhận nhiệm vụ', `Đã nhận nhiệm vụ ${mission.id} - ${mission.requesterName}`);
     } catch (error) {
       console.error(error);
-      showToast('Lỗi nhận nhiệm vụ', 'error');
+      showToast('danger', 'Lỗi', 'Lỗi nhận nhiệm vụ');
     }
   };
 
   // Hoàn thành nhiệm vụ (API Call)
   const completeMission = async (mission: SOSRequest) => {
+    const numericId = Number(mission.id);
+    const isMockId = isNaN(numericId);
+
     try {
-      await ApiClient.completeRescueSosRequest(mission.id as number);
+      if (!isMockId) {
+        await ApiClient.completeRescueSosRequest(numericId);
+      }
       setActiveMissions((prev) => prev.filter((m) => m.id !== mission.id));
       setCompletedMissions((prev) => [...prev, { ...mission, status: 'completed' }]);
-      showToast(`✅ Hoàn thành nhiệm vụ ${mission.id} - ${mission.requesterName}`, 'success');
+      showToast('info', 'Hoàn thành', `Hoàn thành nhiệm vụ ${mission.id} - ${mission.requesterName}`);
     } catch (error) {
       console.error(error);
-      showToast('Lỗi hoàn thành nhiệm vụ', 'error');
+      showToast('danger', 'Lỗi', 'Lỗi hoàn thành nhiệm vụ');
     }
   };
 
@@ -230,6 +256,7 @@ export default function RescueDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-blue-500/30">
+      <ToastContainer />
       {/* Toast */}
       {/* {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />} */}
 
@@ -428,21 +455,32 @@ export default function RescueDashboard() {
             </div>
 
             {/* Completed Missions (gọn) */}
-            {completedMissions.length > 0 && (
+            {completedMissions.filter((m) => !deletedMissionIds.includes(String(m.id))).length > 0 && (
               <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl shadow-lg border border-slate-800 overflow-hidden">
                 <div className="border-b border-slate-800 px-5 py-3 bg-slate-900/80">
                   <h2 className="font-bold text-slate-300 text-xs flex items-center gap-2 uppercase tracking-widest">
                     <CheckCircle className="h-4 w-4 text-emerald-500" />
-                    ĐÃ HOÀN THÀNH ({completedMissions.length})
+                    ĐÃ HOÀN THÀNH ({completedMissions.filter((m) => !deletedMissionIds.includes(String(m.id))).length})
                   </h2>
                 </div>
                 <div className="p-2 max-h-48 overflow-y-auto custom-scrollbar">
-                  {completedMissions.map((m) => (
-                    <div key={m.id} className="text-sm py-2.5 px-3 border-b border-slate-800/50 last:border-0 flex justify-between items-center hover:bg-slate-800/30 rounded-lg transition-colors">
-                      <span className="font-medium text-slate-300">{m.requesterName}</span>
-                      <span className="text-slate-500 text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded">{formatTime(m.createdAt)}</span>
-                    </div>
-                  ))}
+                  {completedMissions
+                    .filter((m) => !deletedMissionIds.includes(String(m.id)))
+                    .map((m) => (
+                      <div key={m.id} className="text-sm py-2.5 px-3 border-b border-slate-800/50 last:border-0 flex justify-between items-center hover:bg-slate-800/30 rounded-lg transition-colors group/item">
+                        <span className="font-medium text-slate-300">{m.requesterName}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded">{formatTime(m.createdAt)}</span>
+                          <button
+                            onClick={() => deleteCompletedMission(String(m.id))}
+                            className="p-1 text-slate-500 hover:text-red-400 rounded transition-colors opacity-0 group-hover/item:opacity-100"
+                            title="Xóa khỏi lịch sử"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

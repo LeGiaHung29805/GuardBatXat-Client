@@ -42,8 +42,8 @@ interface MissionData {
   priority: 'critical' | 'high' | 'medium' | 'low';
 }
 
-// Điểm xuất phát mặc định (UBND thị trấn Bát Xát)
-const DEFAULT_START_POS: [number, number] = [22.5284, 103.9998];
+// Điểm xuất phát mặc định (Mock vị trí đội cứu hộ)
+const DEFAULT_START_POS: [number, number] = [21.067849, 105.804642];
 
 const priorityConfig: Record<string, { label: string; icon: string; color: string; bg: string; border: string }> = {
   critical: { label: 'Khẩn cấp', icon: '🔴', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
@@ -64,6 +64,8 @@ export default function RescueNavigation() {
   const [updates, setUpdates] = useState<FieldUpdateData[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
   const [mission, setMission] = useState<MissionData | null>(null);
+  const [simulationRunId, setSimulationRunId] = useState(0);
+  const [simulatedPos, setSimulatedPos] = useState<[number, number] | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -74,17 +76,7 @@ export default function RescueNavigation() {
         const allSos: any[] = res.data || [];
         const found = allSos.find((m: any) => String(m.id) === missionId);
         
-        let initialStartPos: [number, number] | undefined = undefined;
-        try {
-          if (navigator.geolocation) {
-             const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-               navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-             });
-             initialStartPos = [pos.coords.latitude, pos.coords.longitude];
-          }
-        } catch(e) {
-          console.warn("Không lấy được GPS thực tế, dùng mặc định:", e);
-        }
+        let initialStartPos: [number, number] = [21.067849, 105.804642];
 
         if (found) {
           setMission({
@@ -131,6 +123,8 @@ export default function RescueNavigation() {
 
   const startMission = async () => {
     setMissionStarted(true);
+    setSimulationRunId(0);
+    setSimulatedPos(null);
     const initialUpdate: FieldUpdateData = {
       missionId,
       status: 'en_route',
@@ -174,8 +168,68 @@ export default function RescueNavigation() {
     }
   };
 
-  const handleRouteFound = (distance: number, duration: number) => {
+  const handleRouteFound = (distance: number, duration: number, coordinates?: [number, number][]) => {
     setRouteInfo({ distance, duration });
+    if (coordinates && coordinates.length > 0) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`rescue:route-path:${missionId}`, JSON.stringify(coordinates));
+        localStorage.setItem(`rescue:latest-route-path`, JSON.stringify(coordinates));
+        window.dispatchEvent(new CustomEvent('rescue-route-path-update', { detail: { missionId, path: coordinates } }));
+      }
+    }
+  };
+
+  const startMovementSimulation = () => {
+    setSimulationRunId((prev) => prev + 1);
+    const initialUpdate: FieldUpdateData = {
+      missionId,
+      status: 'en_route',
+      message: 'Mô phỏng di chuyển bắt đầu',
+      timestamp: new Date(),
+    };
+    setUpdates([initialUpdate]);
+    ApiClient.sendSosFieldUpdate(missionId, {
+      status: initialUpdate.status,
+      message: initialUpdate.message,
+      lat: DEFAULT_START_POS[0],
+      lng: DEFAULT_START_POS[1],
+      images: []
+    }).catch(console.error);
+  };
+
+  const handleSimulationStep = (sample: any) => {
+    const latLng: [number, number] = [sample.lat, sample.lng];
+    setSimulatedPos(latLng);
+    if (typeof window !== 'undefined') {
+      const trackingData = {
+        lat: sample.lat,
+        lng: sample.lng,
+        remainingKm: sample.remainingKm,
+        message: `Đội cứu hộ đang di chuyển: ${sample.remainingKm} km`,
+      };
+      localStorage.setItem(`rescue:route:${missionId}`, JSON.stringify(trackingData));
+      localStorage.setItem(`rescue:latest-tracking-update`, JSON.stringify({ missionId, ...trackingData, timestamp: new Date().toISOString() }));
+      window.dispatchEvent(new CustomEvent('rescue-tracking-update', { detail: { missionId, ...trackingData } }));
+    }
+  };
+
+  const handleSimulationEnd = () => {
+    const finalUpdate: FieldUpdateData = {
+      missionId,
+      status: 'completed',
+      message: 'Mô phỏng di chuyển đã hoàn thành, đội cứu hộ đến nơi',
+      timestamp: new Date(),
+    };
+    setUpdates((prev) => [finalUpdate, ...prev]);
+    ApiClient.sendSosFieldUpdate(missionId, {
+      status: finalUpdate.status,
+      message: finalUpdate.message,
+      lat: destPos[0],
+      lng: destPos[1],
+      images: []
+    }).then(() => {
+      alert('🎉 Nhiệm vụ hoàn thành! Cảm ơn đội cứu hộ.');
+    }).catch(console.error);
   };
 
   if (!mounted || !mission) {
@@ -225,7 +279,14 @@ export default function RescueNavigation() {
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Map */}
         <div className="flex-1 relative min-h-[280px] lg:min-h-0 border-r border-slate-800">
-          <RescueMapWithRouting startPos={startPos} destPos={destPos} onRouteFound={handleRouteFound} />
+          <RescueMapWithRouting
+            startPos={simulatedPos || startPos}
+            destPos={destPos}
+            onRouteFound={handleRouteFound}
+            simulationRunId={simulationRunId}
+            onSimulationStep={handleSimulationStep}
+            onSimulationEnd={handleSimulationEnd}
+          />
           {/* Lớp phủ shadow cho Map để blend với viền tối */}
           <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_50px_rgba(2,6,23,0.5)] z-[400]"></div>
         </div>
@@ -320,7 +381,24 @@ export default function RescueNavigation() {
               </Button>
             ) : (
               <div className="space-y-5">
-                <FieldUpdate missionId={missionId} onUpdateSent={handleFieldUpdate} />
+                {/* Trạng thái Tracking cứu hộ */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-cyan-950/20 border border-cyan-900/50 rounded-xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500"></div>
+                  <div className="h-2 w-2 rounded-full bg-cyan-500 animate-ping"></div>
+                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest">
+                    Tracking cứu hộ đang bật
+                  </span>
+                  {simulationRunId === 0 && (
+                    <button
+                      onClick={startMovementSimulation}
+                      className="ml-auto text-[10px] font-bold px-2 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 rounded shadow-[0_0_8px_rgba(6,182,212,0.2)] uppercase tracking-widest transition-colors"
+                    >
+                      Mô phỏng di chuyển
+                    </button>
+                  )}
+                </div>
+
+                <FieldUpdate missionId={missionId} phoneNumber={mission.phoneNumber} onUpdateSent={handleFieldUpdate} />
                 <UpdateTimeline updates={updates} />
               </div>
             )}

@@ -79,6 +79,7 @@ export default function SafeRouteMap({
   destLoc,
   setDestLoc,
   routeCoords,
+  blockedSegments = [],
 }: any) {
   return (
     <MapContainer
@@ -109,21 +110,22 @@ export default function SafeRouteMap({
         </Marker>
       )}
 
+      {/* Đường đi an toàn */}
       {routeCoords && routeCoords.length > 0 && (
         <>
           {startLoc && (
             <Polyline
               positions={[[startLoc.lat, startLoc.lng], routeCoords[0]]}
-              color="#fde047" // Màu vàng đồng bộ
+              color="#3b82f6" // Xanh dương cho đoạn kết nối GPS
               weight={4}
-              dashArray="8, 8" // Tạo nét đứt
+              dashArray="8, 8"
               opacity={0.8}
             />
           )}
 
           <Polyline
             positions={routeCoords}
-            color="#fde047" // Vàng nổi bật
+            color="#10b981" // Xanh lá Emerald an toàn
             weight={6}
             opacity={0.9}
             lineCap="round"
@@ -136,14 +138,35 @@ export default function SafeRouteMap({
                 routeCoords[routeCoords.length - 1],
                 [destLoc.lat, destLoc.lng],
               ]}
-              color="#fde047" // Màu vàng đồng bộ
+              color="#3b82f6" // Xanh dương cho đoạn kết nối Đích
               weight={4}
-              dashArray="8, 8" // Tạo nét đứt
+              dashArray="8, 8"
               opacity={0.8}
             />
           )}
         </>
       )}
+
+      {/* Các đoạn đường bị chặn cản trở gần đó */}
+      {blockedSegments && blockedSegments.map((seg: any, idx: number) => (
+        <Polyline
+          key={idx}
+          positions={seg.coords}
+          color={seg.level === 'DANGER' ? '#ef4444' : '#f97316'} // Đỏ cho DANGER, Cam cho WARNING
+          weight={5}
+          dashArray="6, 6"
+          opacity={0.8}
+        >
+          <Popup>
+            <div className="text-xs font-bold text-red-600">
+              ⚠️ ĐOẠN ĐƯỜNG BỊ TẮC NGHẼN/THIÊN TAI
+            </div>
+            <div className="text-[10px] text-gray-500 mt-1">
+              AI đã chủ động chuyển lộ trình của bạn để tránh điểm này.
+            </div>
+          </Popup>
+        </Polyline>
+      ))}
     </MapContainer>
   );
 }

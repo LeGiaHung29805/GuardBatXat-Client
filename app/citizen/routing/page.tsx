@@ -18,6 +18,7 @@ export default function SafeRoutingPage() {
     null,
   );
   const [route, setRoute] = useState<[number, number][]>([]);
+  const [blockedSegments, setBlockedSegments] = useState<{ coords: [number, number][]; level: 'DANGER' | 'WARNING' }[]>([]);
   const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function SafeRoutingPage() {
     setLoading(true);
     setMessage("");
     setRoute([]);
+    setBlockedSegments([]);
 
     try {
       const res = await ApiClient.getSafeRoute({
@@ -71,8 +73,10 @@ export default function SafeRoutingPage() {
         endLng: destLoc.lng,
       });
 
-      if (res.code === 200 && (res.data.pathPoints || res.data.route_coordinates)) {
-        setRoute(res.data.pathPoints || res.data.route_coordinates);
+      const routePoints = res.data.pathPoints || res.data.route_coordinates;
+      if (res.code === 200 && routePoints) {
+        setRoute(routePoints);
+        setBlockedSegments(res.data.blocked_segments || []);
         setMessage("Đã tìm thấy lộ trình an toàn nhất né vùng thiên tai!");
       }
     } catch (error: any) {
@@ -84,32 +88,31 @@ export default function SafeRoutingPage() {
   };
 
   return (
-    <div className="relative w-full h-screen flex flex-col md:flex-row bg-gray-50">
+    <div className="relative w-full h-full flex flex-col md:flex-row bg-slate-950 text-slate-100">
       {/* Cột trái: Bảng điều khiển */}
-      <div className="w-full md:w-96 p-5 bg-white shadow-xl z-10 flex flex-col">
-        <h1 className="text-2xl font-bold text-blue-700 mb-2">
+      <div className="w-full md:w-96 h-[45%] md:h-full p-4 md:p-6 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 z-10 flex flex-col overflow-y-auto shrink-0 shadow-2xl">
+        <h1 className="text-xl md:text-2xl font-black text-blue-500 mb-2 flex items-center gap-2">
           Định vị An Toàn
         </h1>
-        <p className="text-sm text-gray-600 mb-6 border-b pb-4">
-          Chọn một điểm đến tùy ý trên bản đồ. AI sẽ tự động bẻ lái lộ trình để
-          né vùng ngập lụt và sạt lở.
+        <p className="text-xs text-slate-400 mb-4 pb-2 border-b border-slate-800 leading-relaxed">
+          Chọn một điểm đến tùy ý trên bản đồ. AI sẽ tự động bẻ lái lộ trình để né tránh các khu vực ngập lụt và sạt lở nguy hiểm.
         </p>
 
         {/* Status Box */}
-        <div className="bg-gray-100 rounded-lg p-4 mb-6 space-y-3">
+        <div className="bg-slate-950/60 rounded-xl p-4 mb-4 space-y-3 border border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow"></div>
-            <span className="text-sm font-medium text-gray-700">
-              A: Vị trí của bạn
+            <div className="w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-slate-900 shadow"></div>
+            <span className="text-xs font-semibold text-slate-300">
+              Điểm A: Vị trí của bạn
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-4 h-4 bg-purple-600 rounded-full border-2 border-white shadow"></div>
-            <span className="text-sm font-medium text-gray-700">
-              B:{" "}
+            <div className="w-3.5 h-3.5 bg-purple-500 rounded-full border-2 border-slate-900 shadow"></div>
+            <span className="text-xs font-semibold text-slate-300">
+              Điểm B:{" "}
               {destLoc
                 ? `[${destLoc.lat.toFixed(4)}, ${destLoc.lng.toFixed(4)}]`
-                : "(Click lên bản đồ để chọn)"}
+                : "(Nhấp vào bản đồ để chọn)"}
             </span>
           </div>
         </div>
@@ -117,15 +120,19 @@ export default function SafeRoutingPage() {
         <button
           onClick={handleFindRoute}
           disabled={loading || !destLoc}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold rounded-lg transition-all"
+          className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40 text-white font-extrabold rounded-xl transition-all shadow-lg active:scale-95"
         >
-          {loading ? "Đang tính toán..." : "Tìm Đường Đi Ngay"}
+          {loading ? "Đang tính toán..." : "TÌM ĐƯỜNG ĐI NGAY"}
         </button>
 
         {/* Box hiển thị thông báo kết quả */}
         {message && (
           <div
-            className={`mt-6 p-4 rounded-lg font-medium text-sm ${route.length > 0 ? "bg-green-100 text-green-700 border border-green-300" : "bg-red-100 text-red-700 border border-red-300"}`}
+            className={`mt-4 p-4 rounded-xl font-bold text-xs border ${
+              route.length > 0 
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                : "bg-red-500/10 text-red-400 border-red-500/20"
+            }`}
           >
             {message}
           </div>
@@ -133,12 +140,13 @@ export default function SafeRoutingPage() {
       </div>
 
       {/* Cột phải: Bản đồ */}
-      <div className="flex-1 h-[60vh] md:h-screen">
+      <div className="flex-1 h-[55%] md:h-full relative">
         <SafeRouteMap
           startLoc={startLoc}
           destLoc={destLoc}
           setDestLoc={setDestLoc}
           routeCoords={route}
+          blockedSegments={blockedSegments}
         />
       </div>
     </div>
