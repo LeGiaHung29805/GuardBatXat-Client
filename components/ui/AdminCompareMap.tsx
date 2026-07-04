@@ -27,6 +27,7 @@ interface RoutesData {
 
 interface AdminCompareMapProps {
   startLoc: Location | null;
+  setStartLoc: (loc: Location) => void;
   destLoc: Location | null;
   setDestLoc: (loc: Location) => void;
   routes: RoutesData;
@@ -90,6 +91,7 @@ function ClickHandler({
 
 export default function AdminCompareMap({
   startLoc,
+  setStartLoc,
   destLoc,
   setDestLoc,
   routes,
@@ -113,7 +115,17 @@ export default function AdminCompareMap({
         <ClickHandler setDestination={setDestLoc} />
 
         {startLoc && (
-          <Marker position={[startLoc.lat, startLoc.lng]} icon={startIcon}>
+          <Marker
+            position={[startLoc.lat, startLoc.lng]}
+            icon={startIcon}
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                const latLng = e.target.getLatLng();
+                setStartLoc({ lat: latLng.lat, lng: latLng.lng });
+              },
+            }}
+          >
             <Popup>
               <div className="font-bold text-blue-700">Điểm xuất phát (A)</div>
             </Popup>
@@ -121,7 +133,17 @@ export default function AdminCompareMap({
         )}
 
         {destLoc && (
-          <Marker position={[destLoc.lat, destLoc.lng]} icon={endIcon}>
+          <Marker
+            position={[destLoc.lat, destLoc.lng]}
+            icon={endIcon}
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                const latLng = e.target.getLatLng();
+                setDestLoc({ lat: latLng.lat, lng: latLng.lng });
+              },
+            }}
+          >
             <Popup>
               <div className="font-bold text-purple-700">
                 Điểm đến đã chọn (B)
