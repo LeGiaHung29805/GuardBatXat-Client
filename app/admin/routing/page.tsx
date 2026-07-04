@@ -37,6 +37,29 @@ export default function AdminRoutingPage() {
     setDestLoc(loc); // 1. Cập nhật vị trí cờ tím (Điểm B)
     setRoutes({ shortest: [], safety: [], rescue: [] }); // 2. Xóa trắng lộ trình cũ
   };
+
+  const handleStartMapClick = (loc: { lat: number; lng: number }) => {
+    setStartLoc(loc); // 1. Cập nhật vị trí cờ xanh (Điểm A)
+    setRoutes({ shortest: [], safety: [], rescue: [] }); // 2. Xóa trắng lộ trình cũ
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Trình duyệt của bạn không hỗ trợ định vị GPS.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        handleStartMapClick({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      (error) => {
+        alert("Không thể lấy vị trí hiện tại: " + error.message);
+      }
+    );
+  };
   const handleCompareRoutes = async () => {
     if (!startLoc || !destLoc) return alert("Chọn điểm đến!");
     setLoading(true);
@@ -73,6 +96,7 @@ export default function AdminRoutingPage() {
       <div className="flex-1 h-full w-full relative z-0">
         <AdminCompareMap
           startLoc={startLoc}
+          setStartLoc={handleStartMapClick}
           destLoc={destLoc}
           setDestLoc={handleMapClick}
           routes={routes}
@@ -115,6 +139,49 @@ export default function AdminRoutingPage() {
           >
             Đóng
           </button>
+        </div>
+
+        {/* THIẾT LẬP TỌA ĐỘ A & B */}
+        <div className="space-y-4 mb-6">
+          {/* ĐIỂM XUẤT PHÁT (A) */}
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Điểm xuất phát (A)</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleUseCurrentLocation}
+                  className="text-[11px] font-bold text-blue-600 hover:text-blue-800 transition bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md"
+                >
+                  📍 Vị trí của tôi
+                </button>
+                <button
+                  onClick={() => handleStartMapClick({ lat: 22.5458, lng: 103.8895 })}
+                  className="text-[11px] font-bold text-slate-600 hover:text-slate-800 transition bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md"
+                >
+                  🏢 UBND Huyện
+                </button>
+              </div>
+            </div>
+            {startLoc ? (
+              <p className="text-xs font-mono text-slate-600 bg-white p-2 rounded-lg border border-slate-100">
+                Lat: {startLoc.lat.toFixed(6)}, Lng: {startLoc.lng.toFixed(6)}
+              </p>
+            ) : (
+              <p className="text-xs text-rose-500 italic">Chưa xác định</p>
+            )}
+          </div>
+
+          {/* ĐIỂM ĐẾN (B) */}
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Điểm đến (B)</span>
+            {destLoc ? (
+              <p className="text-xs font-mono text-slate-600 bg-white p-2 rounded-lg border border-slate-100">
+                Lat: {destLoc.lat.toFixed(6)}, Lng: {destLoc.lng.toFixed(6)}
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400 italic">Chạm bản đồ hoặc kéo marker để chọn</p>
+            )}
+          </div>
         </div>
 
         <button
