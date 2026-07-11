@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { ApiClient } from "@/lib/ApiClient";
 
 export default function AdminLayout({
   children,
@@ -12,14 +13,59 @@ export default function AdminLayout({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const navLinkClass =
-    "block px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-all duration-200 hover:translate-x-2";
+  // Route Guard: Kiểm tra quyền ADMIN
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      try {
+        const response = await ApiClient.getMyProfile();
+        if (response.data && response.data.roleName === "ADMIN") {
+          setIsAuthorized(true);
+        } else {
+          setIsAuthorized(false);
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("Lỗi kiểm tra quyền admin:", error);
+        setIsAuthorized(false);
+        router.push("/auth");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAdminAccess();
+  }, [router]);
 
   // Tự động đóng sidebar di động khi chuyển trang
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [pathname]);
+
+  const navLinkClass =
+    "block px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-all duration-200 hover:translate-x-2";
+
+  // Loading state: Hiển thị khi đang kiểm tra quyền
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen w-full bg-slate-900">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mb-4"></div>
+          <p className="text-white font-semibold">
+            Đang kiểm tra quyền truy cập...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Nếu không có quyền ADMIN, không render giao diện
+  if (!isAuthorized) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-full bg-slate-50 overflow-hidden text-slate-900">
@@ -119,4 +165,3 @@ export default function AdminLayout({
     </div>
   );
 }
-
