@@ -1,30 +1,71 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ApiClient } from "@/lib/ApiClient";
-import { Save } from "lucide-react";
+import { Save, Loader2 } from "lucide-react";
 
 export default function AdminAiConfigPage() {
   const [weights, setWeights] = useState({
-    wDistance: 0.1,
-    wFlood: 0.4,
-    wLandslide: 0.3,
-    wCapacity: 0.1,
-    wBridge: 0.05,
-    wReport: 0.05,
+    wDistance: 0,
+    wFlood: 0,
+    wLandslide: 0,
+    wCapacity: 0,
+    wBridge: 0,
+    wReport: 0,
   });
 
   // State để quản lý chiến lược đang được cấu hình
   const [strategy, setStrategy] = useState("safety");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Lấy trọng số từ backend khi component mount hoặc khi strategy thay đổi
+  useEffect(() => {
+    const fetchWeights = async () => {
+      setIsLoading(true);
+      try {
+        const response = await ApiClient.getAHPWeights(strategy);
+        if (response.data) {
+          setWeights({
+            wDistance: response.data.wDistance || 0,
+            wFlood: response.data.wFlood || 0,
+            wLandslide: response.data.wLandslide || 0,
+            wCapacity: response.data.wCapacity || 0,
+            wBridge: response.data.wBridge || 0,
+            wReport: response.data.wReport || 0,
+          });
+        }
+      } catch (error: any) {
+        console.error("Lỗi khi tải trọng số:", error);
+        alert(`Không thể tải cấu hình trọng số: ${error.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWeights();
+  }, [strategy]);
 
   const handleSaveAI = async () => {
+    // Kiểm tra tổng trọng số trước khi gửi
+    const sum = Object.values(weights).reduce((acc, val) => acc + val, 0);
+    if (Math.abs(sum - 1.0) > 0.001) {
+      alert(
+        `Lỗi: Tổng trọng số phải bằng 1.0. Hiện tại: ${sum.toFixed(3)}\nVui lòng điều chỉnh lại các giá trị.`,
+      );
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      // Truyền biến strategy linh hoạt thay vì hardcode "rescue"
       await ApiClient.updateAHPWeights(strategy, weights);
       alert(
-        ` Não bộ AI (chiến lược ${strategy}) đã được cập nhật thành công xuống PostGIS!`,
+        `✅ Cập nhật thành công trọng số AHP cho chiến lược "${strategy}"!`,
       );
-    } catch (e) {
-      alert("Lỗi kết nối Backend!");
+    } catch (error: any) {
+      const errorMsg = error.message || "Lỗi không xác định";
+      alert(`❌ Lỗi khi cập nhật: ${errorMsg}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -57,41 +98,62 @@ export default function AdminAiConfigPage() {
       </div>
 
       <div className="bg-white p-5 sm:p-8 md:p-10 rounded-[2rem] border border-slate-100 shadow-sm mb-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Object.entries(weights).map(([k, v]) => (
-            <div
-              key={k}
-              className="p-6 bg-slate-50 rounded-2xl border border-slate-100 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all"
-            >
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
-                {k}
-              </label>
-              <input
-                type="number"
-                step="0.05"
-                value={v}
-                onChange={(e) =>
-                  setWeights({
-                    ...weights,
-                    [k]: parseFloat(e.target.value) || 0,
-                  })
-                }
-                className="w-full bg-transparent text-3xl font-black text-blue-600 outline-none"
-              />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <span className="ml-3 text-slate-600 font-semibold">
+              Đang tải cấu hình...
+            </span>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.entries(weights).map(([k, v]) => (
+                <div
+                  key={k}
+                  className="p-6 bg-slate-50 rounded-2xl border border-slate-100 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all"
+                >
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
+                    {k}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={v}
+                    onChange={(e) =>
+                      setWeights({
+                        ...weights,
+                        [k]: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full bg-transparent text-3xl font-black text-blue-600 outline-none"
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="mt-10 pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
-          <p className="text-sm font-bold text-slate-500">
-            Lưu ý: Tổng trọng số nên bằng 1.0 để thuật toán tối ưu nhất.
-          </p>
-          <button
-            onClick={handleSaveAI}
-            className="bg-slate-900 w-full md:w-auto justify-center text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 hover:bg-black transition shadow-xl"
-          >
-            <Save size={20} /> Cập nhật xuống CSDL
-          </button>
-        </div>
+            <div className="mt-10 pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
+              <p className="text-sm font-bold text-slate-500">
+                Lưu ý: Tổng trọng số nên bằng 1.0 để thuật toán tối ưu nhất.
+              </p>
+              <button
+                onClick={handleSaveAI}
+                disabled={isSaving || isLoading}
+                className="bg-slate-900 w-full md:w-auto justify-center text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 hover:bg-black transition shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <Save size={20} /> Cập nhật xuống CSDL
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

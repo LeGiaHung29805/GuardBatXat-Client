@@ -27,7 +27,12 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 // Helpers riêng cho heatmap để fallback khi endpoint tổng hợp phía backend lỗi.
 const unwrapApiPayload = (payload: any) => {
-  if (payload && typeof payload === "object" && payload.code === 200 && "data" in payload) {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    payload.code === 200 &&
+    "data" in payload
+  ) {
     return payload.data;
   }
   return payload;
@@ -57,9 +62,10 @@ const fetchJsonWithoutInterceptor = async (path: string) => {
   }
 
   if (!response.ok) {
-    const message = typeof payload === "object" && payload?.message
-      ? payload.message
-      : text || `HTTP ${response.status}`;
+    const message =
+      typeof payload === "object" && payload?.message
+        ? payload.message
+        : text || `HTTP ${response.status}`;
     throw new Error(message);
   }
 
@@ -86,11 +92,7 @@ const normalizeHeatmapPoints = (payload: any): HeatmapPoint[] => {
   return rows
     .map((point: any): HeatmapPoint | null => {
       if (Array.isArray(point)) {
-        return [
-          Number(point[0]),
-          Number(point[1]),
-          Number(point[2] ?? 0.5),
-        ];
+        return [Number(point[0]), Number(point[1]), Number(point[2] ?? 0.5)];
       }
 
       if (!point || typeof point !== "object") return null;
@@ -105,16 +107,19 @@ const normalizeHeatmapPoints = (payload: any): HeatmapPoint[] => {
       }
 
       if (point.geojson) {
-        const geojson = typeof point.geojson === "string"
-          ? JSON.parse(point.geojson)
-          : point.geojson;
+        const geojson =
+          typeof point.geojson === "string"
+            ? JSON.parse(point.geojson)
+            : point.geojson;
         const lngLat = findLngLatInGeoJson(geojson?.coordinates);
 
         if (lngLat) {
           return {
             lat: Number(lngLat[1]),
             lng: Number(lngLat[0]),
-            weight: Number(point.weight ?? point.muc_do ?? point.combined_score ?? 0.6),
+            weight: Number(
+              point.weight ?? point.muc_do ?? point.combined_score ?? 0.6,
+            ),
             severity: point.severity ?? point.risk_severity ?? point.riskStatus,
           };
         }
@@ -177,7 +182,7 @@ axiosInstance.interceptors.response.use(
 
         // Chuyển hướng về trang đăng nhập nếu cần
         if (window.location.pathname !== "/auth") {
-          window.location.href = '/auth';
+          window.location.href = "/auth";
         }
       }
     }
@@ -186,8 +191,12 @@ axiosInstance.interceptors.response.use(
     let errorMessage = "Lỗi kết nối máy chủ";
     if (error.response?.data?.message) {
       errorMessage = error.response.data.message;
-    } else if (error.response?.status === 0 || error.message === "Network Error") {
-      errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend đang chạy tại http://localhost:8080";
+    } else if (
+      error.response?.status === 0 ||
+      error.message === "Network Error"
+    ) {
+      errorMessage =
+        "Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend đang chạy tại http://localhost:8080";
     } else if (error.response?.status >= 500) {
       errorMessage = `Lỗi máy chủ (${error.response.status}): ${error.response?.data?.message || "Vui lòng thử lại sau"}`;
     }
@@ -241,7 +250,9 @@ export const ApiClient = {
   // ==========================================
   getInitialLandslideData: async (): Promise<HeatmapPoint[]> => {
     try {
-      const payload = await fetchJsonWithoutInterceptor("/v1/map/heatmap/landslide");
+      const payload = await fetchJsonWithoutInterceptor(
+        "/v1/map/heatmap/landslide",
+      );
       const points = normalizeHeatmapPoints(payload);
       if (points.length > 0) return points;
     } catch (error) {
@@ -309,12 +320,20 @@ export const ApiClient = {
     const response = await axiosInstance.put(`/v1/rescue/sos/${id}/complete`);
     return response.data;
   },
-  getSosFieldUpdates: async (id: string | number): Promise<ApiResponse<any>> => {
+  getSosFieldUpdates: async (
+    id: string | number,
+  ): Promise<ApiResponse<any>> => {
     const response = await axiosInstance.get(`/v1/rescue/sos/${id}/updates`);
     return response.data;
   },
-  sendSosFieldUpdate: async (id: string | number, data: any): Promise<ApiResponse<any>> => {
-    const response = await axiosInstance.post(`/v1/rescue/sos/${id}/updates`, data);
+  sendSosFieldUpdate: async (
+    id: string | number,
+    data: any,
+  ): Promise<ApiResponse<any>> => {
+    const response = await axiosInstance.post(
+      `/v1/rescue/sos/${id}/updates`,
+      data,
+    );
     return response.data;
   },
 
@@ -380,6 +399,12 @@ export const ApiClient = {
   // ==========================================
   // --- ADMIN AI, SIMULATION & ROUTING ---
   // ==========================================
+  getAHPWeights: async (strategyName: string) => {
+    const response = await axiosInstance.get(
+      `/admin/system/weights/${strategyName}`,
+    );
+    return response.data;
+  },
   updateAHPWeights: async (strategyName: string, weights: any) => {
     const response = await axiosInstance.put(
       `/admin/system/weights/${strategyName}`,
@@ -419,27 +444,42 @@ export const ApiClient = {
   getSystemHealth: () => axiosInstance.get("/admin/health"),
 
   // --- INCIDENT REPORT APIs ---
-  createIncidentReport: async (data: IncidentReportRequestData): Promise<ApiResponse<IncidentReportResponse>> => {
+  createIncidentReport: async (
+    data: IncidentReportRequestData,
+  ): Promise<ApiResponse<IncidentReportResponse>> => {
     const response = await axiosInstance.post("/v1/incidents", data);
     return response.data;
   },
-  getIncidentReports: async (status?: string): Promise<ApiResponse<IncidentReportResponse[]>> => {
+  getIncidentReports: async (
+    status?: string,
+  ): Promise<ApiResponse<IncidentReportResponse[]>> => {
     const response = await axiosInstance.get("/v1/incidents", {
       params: status ? { status } : {},
     });
     return response.data;
   },
-  updateIncidentStatus: async (id: number, status: string): Promise<ApiResponse<IncidentReportResponse>> => {
-    const response = await axiosInstance.put(`/v1/incidents/${id}/status`, null, {
-      params: { status },
-    });
+  updateIncidentStatus: async (
+    id: number,
+    status: string,
+  ): Promise<ApiResponse<IncidentReportResponse>> => {
+    const response = await axiosInstance.put(
+      `/v1/incidents/${id}/status`,
+      null,
+      {
+        params: { status },
+      },
+    );
     return response.data;
   },
-  checkNeighborhood: async (data: LocationCheckRequest): Promise<ApiResponse<NeighborhoodSafetyResponse>> => {
+  checkNeighborhood: async (
+    data: LocationCheckRequest,
+  ): Promise<ApiResponse<NeighborhoodSafetyResponse>> => {
     const response = await axiosInstance.post("/v1/safety/neighborhood", data);
     return response.data;
   },
-  getMyIncidentReports: async (): Promise<ApiResponse<IncidentReportResponse[]>> => {
+  getMyIncidentReports: async (): Promise<
+    ApiResponse<IncidentReportResponse[]>
+  > => {
     const response = await axiosInstance.get("/v1/incidents/my-reports");
     return response.data;
   },
@@ -447,7 +487,9 @@ export const ApiClient = {
     const response = await axiosInstance.get("/v1/incidents/stats");
     return response.data;
   },
-  getPublicNotifications: async (): Promise<ApiResponse<NotificationItem[]>> => {
+  getPublicNotifications: async (): Promise<
+    ApiResponse<NotificationItem[]>
+  > => {
     const response = await axiosInstance.get("/v1/notifications");
     return response.data;
   },
