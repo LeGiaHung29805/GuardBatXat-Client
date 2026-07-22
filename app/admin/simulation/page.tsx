@@ -29,9 +29,9 @@ export default function SimulationPage() {
 
   // --- LOGIC XỬ LÝ DỮ LIỆU BIỂU ĐỒ ---
   const chartData = useMemo(() => {
-    if (simData.length === 0) return [];
+    if (!Array.isArray(simData) || simData.length === 0) return [];
     const stats = simData.reduce((acc: any, curr: any) => {
-      const status = curr.status || "Chưa xác định";
+      const status = curr?.status || "Chưa xác định";
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
@@ -45,12 +45,14 @@ export default function SimulationPage() {
   // Màu sắc cho biểu đồ
   const COLORS = ["#bdca06", "#013ff8", "#ea0808", "#f89d00", "#8b5cf6"];
 
-  const totalPages = Math.ceil(simData.length / itemsPerPage);
+  const totalPages = Math.ceil((Array.isArray(simData) ? simData.length : 0) / itemsPerPage);
 
   // Lấy dữ liệu của trang hiện tại cho bảng
   const currentTableData = useMemo(() => {
     const firstPageIndex = (currentPage - 1) * itemsPerPage;
-    return simData.slice(firstPageIndex, firstPageIndex + itemsPerPage);
+    return Array.isArray(simData)
+      ? simData.slice(firstPageIndex, firstPageIndex + itemsPerPage)
+      : [];
   }, [currentPage, simData]);
 
   const handleRun = async () => {
@@ -61,12 +63,16 @@ export default function SimulationPage() {
         parseFloat(cleanWaterLevel),
       );
 
-      if (res.code === 200) {
-        setSimData(res.data);
+      if (res?.code === 200) {
+        setSimData(Array.isArray(res?.data) ? res.data : []);
         setCurrentPage(1);
+      } else {
+        alert(res?.message || "Có lỗi xảy ra khi chạy giả lập.");
+        setSimData([]);
       }
-    } catch (e) {
-      alert("Lỗi kết nối hoặc xử lý giả lập");
+    } catch (e: any) {
+      alert(e?.message || "Lỗi kết nối hoặc xử lý giả lập");
+      setSimData([]);
     }
     setLoading(false);
   };
@@ -112,7 +118,7 @@ export default function SimulationPage() {
         </button>
       </div>
 
-      {simData.length > 0 && (
+      {Array.isArray(simData) && simData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4">
           {/* CỘT TRÁI: THỐNG KÊ & BIỂU ĐỒ */}
           <div className="lg:col-span-1 space-y-6">
@@ -122,11 +128,11 @@ export default function SimulationPage() {
                 Dân số bị ảnh hưởng
               </p>
               <p className="text-5xl font-black mt-2">
-                {simData.length * 4}{" "}
+                {((Array.isArray(simData) ? simData.length : 0) * 4).toLocaleString()}{" "}
                 <span className="text-lg font-medium">người</span>
               </p>
               <p className="text-[10px] text-red-200 mt-4">
-                *Dựa trên ước tính {simData.length.toLocaleString()} công trình.
+                *Dựa trên ước tính {(Array.isArray(simData) ? simData.length : 0).toLocaleString()} công trình.
               </p>
             </div>
 
@@ -197,20 +203,20 @@ export default function SimulationPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {currentTableData.map((house, idx) => (
+                  {(currentTableData || []).map((house, idx) => (
                     <tr
-                      key={house.buildingId || idx}
+                      key={house?.buildingId || idx}
                       className="hover:bg-slate-50 transition"
                     >
                       <td className="p-4 px-6 font-mono font-bold text-slate-700">
-                        BUILD-{house.buildingId ?? idx}
+                        BUILD-{house?.buildingId ?? idx}
                       </td>
                       <td className="p-4 font-black text-blue-600">
-                        {house.depth ?? "0"} m
+                        {house?.depth ?? "0"} m
                       </td>
                       <td className="p-4 px-6 text-right">
                         <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">
-                          {house.status || "Nguy Hiểm"}
+                          {house?.status || "Nguy Hiểm"}
                         </span>
                       </td>
                     </tr>
