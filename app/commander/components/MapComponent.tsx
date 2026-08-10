@@ -3,15 +3,42 @@ import React, { useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import HeatmapLayer from "./HeatmapLayer";
-import { Flame, MapPin, Home, AlertTriangle } from "lucide-react"; // Import thư viện Icon
+import { Flame, MapPin, Home, AlertTriangle, ShieldAlert } from "lucide-react"; // Import thư viện Icon
 
 interface Props {
   floodPoints: any[];
   landslidePoints: any[];
+  incidentReports?: any[];
 }
 
-export default function MapComponent({ floodPoints, landslidePoints }: Props) {
+export default function MapComponent({ floodPoints, landslidePoints, incidentReports = [] }: Props) {
   const [mapMode, setMapMode] = useState<'heatmap' | 'points'>('heatmap');
+
+  const activeIncidents = incidentReports.filter((r: any) => r.status?.toUpperCase() === "APPROVED");
+
+  const getIncidentColor = (level: string) => {
+    switch (level?.toUpperCase()) {
+      case "CRITICAL":
+        return { fill: "#dc2626", border: "#f87171" }; // Red
+      case "HIGH":
+        return { fill: "#ea580c", border: "#fb923c" }; // Orange
+      case "MEDIUM":
+        return { fill: "#eab308", border: "#fef08a" }; // Yellow
+      case "LOW":
+      default:
+        return { fill: "#2563eb", border: "#60a5fa" }; // Blue
+    }
+  };
+
+  const getImpactText = (level: string) => {
+    switch (level?.toUpperCase()) {
+      case "CRITICAL": return "⚠️ Nguy kịch";
+      case "HIGH": return "🔴 Cao";
+      case "MEDIUM": return "🟡 Trung bình";
+      case "LOW": return "🟢 Thấp";
+      default: return level;
+    }
+  };
 
   // Tọa độ trung tâm (Máp đúng tọa độ thật)
   const center: [number, number] = [22.528534, 103.885091];
@@ -154,6 +181,37 @@ export default function MapComponent({ floodPoints, landslidePoints }: Props) {
             })}
           </>
         )}
+
+        {/* HIỂN THỊ CÁC SỰ CỐ ĐÃ ĐƯỢC DUYỆT (HIỂN THỊ TRÊN CẢ HAI CHẾ ĐỘ ĐỂ CHỈ HUY LUÔN THEO DÕI ĐƯỢC) */}
+        {activeIncidents.map((incident: any) => {
+          const color = getIncidentColor(incident.impactLevel);
+          return (
+            <CircleMarker
+              key={`incident-${incident.id}`}
+              center={[incident.gpsLat, incident.gpsLng]}
+              radius={10}
+              pathOptions={{
+                fillColor: color.fill,
+                color: color.border,
+                fillOpacity: 0.85,
+                weight: 2,
+              }}
+            >
+              <Popup className="text-gray-900 font-sans">
+                <div className="flex items-center gap-1.5 font-bold text-yellow-600 mb-1 border-b border-gray-200 pb-1">
+                  <ShieldAlert size={16} />
+                  <span>Sự cố: {incident.incidentType}</span>
+                </div>
+                <div className="text-xs text-gray-700 space-y-1">
+                  <div><strong>Mức độ:</strong> {getImpactText(incident.impactLevel)}</div>
+                  <div className="max-w-[200px] break-words"><strong>Mô tả:</strong> {incident.description || "Không có mô tả."}</div>
+                  <div><strong>Người báo:</strong> {incident.reporterName || "Ẩn danh"}</div>
+                  <div><strong>Tọa độ:</strong> {incident.gpsLat.toFixed(5)}, {incident.gpsLng.toFixed(5)}</div>
+                </div>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
       </MapContainer>
     </div>
   );

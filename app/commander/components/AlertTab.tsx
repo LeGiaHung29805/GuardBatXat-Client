@@ -15,7 +15,7 @@ import {
 
 interface Props {
   notifications: NotificationLog[];
-  onSendAlert: (message: string, level: string) => void;
+  onSendAlert: (message: string, level: string, targetArea: string) => void;
 }
 
 const ALERT_LEVELS = [
@@ -24,9 +24,12 @@ const ALERT_LEVELS = [
   { value: "EMERGENCY", label: "Khẩn cấp", color: "red" },
 ];
 
+const COMMUNES = ["Tất cả", "Bản Qua", "Bản Vược", "Bát Xát", "Phìn Ngan", "Quang Kim"];
+
 export default function AlertTab({ notifications, onSendAlert }: Props) {
   const [alertMessage, setAlertMessage] = useState("");
   const [alertLevel, setAlertLevel] = useState("WARNING");
+  const [targetArea, setTargetArea] = useState("Tất cả");
 
   const quickTemplates = [
     "CẢNH BÁO: Mưa lớn dự kiến trong 2 giờ tới. Người dân cần đề phòng ngập úng.",
@@ -40,7 +43,7 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
       alert("Vui lòng nhập nội dung cảnh báo!");
       return;
     }
-    onSendAlert(alertMessage, alertLevel);
+    onSendAlert(alertMessage, alertLevel, targetArea);
     setAlertMessage("");
   };
 
@@ -59,30 +62,49 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
           Soạn Cảnh báo Mới
         </h3>
 
-        {/* Chọn cấp độ cảnh báo */}
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-sm text-gray-400">Cấp độ:</span>
-          <div className="flex gap-2">
-            {ALERT_LEVELS.map((lvl) => {
-              const isActive = alertLevel === lvl.value;
-              const activeColor =
-                lvl.color === "red" ? "bg-red-600 border-red-400" :
-                lvl.color === "orange" ? "bg-orange-600 border-orange-400" :
-                "bg-blue-600 border-blue-400";
-              return (
-                <button
-                  key={lvl.value}
-                  onClick={() => setAlertLevel(lvl.value)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold border-2 transition-all ${
-                    isActive ? `${activeColor} text-white shadow-md` : "bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
-                  }`}
-                >
-                  {lvl.label}
-                </button>
-              );
-            })}
+        <div className="flex flex-wrap items-center gap-6 mb-4">
+          {/* Chọn cấp độ cảnh báo */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400 font-medium">Cấp độ:</span>
+            <div className="flex gap-2">
+              {ALERT_LEVELS.map((lvl) => {
+                const isActive = alertLevel === lvl.value;
+                const activeColor =
+                  lvl.color === "red" ? "bg-red-600 border-red-400" :
+                  lvl.color === "orange" ? "bg-orange-600 border-orange-400" :
+                  "bg-blue-600 border-blue-400";
+                return (
+                  <button
+                    key={lvl.value}
+                    onClick={() => setAlertLevel(lvl.value)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-semibold border-2 transition-all ${
+                      isActive ? `${activeColor} text-white shadow-md` : "bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
+                    }`}
+                  >
+                    {lvl.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chọn khu vực (Xã) gửi đến */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400 font-medium">Khu vực:</span>
+            <select
+              value={targetArea}
+              onChange={(e) => setTargetArea(e.target.value)}
+              className="bg-gray-700 border-2 border-gray-600 text-white rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+            >
+              {COMMUNES.map((commune) => (
+                <option key={commune} value={commune}>
+                  {commune === "Tất cả" ? "Tất cả các xã (Toàn huyện)" : commune}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
+
         <textarea
           value={alertMessage}
           onChange={(e) => setAlertMessage(e.target.value)}
@@ -95,7 +117,9 @@ export default function AlertTab({ notifications, onSendAlert }: Props) {
             <span className="bg-gray-700 px-3 py-1 rounded-lg">{alertMessage.length}/500 ký tự</span>
             <span className="flex items-center gap-2">
               <Globe size={16} className="text-blue-400" />
-              Gửi đến: <span className="font-bold text-white bg-blue-900/30 px-2 py-0.5 rounded border border-blue-800">Tất cả người dân</span> trong khu vực
+              Gửi đến: <span className="font-bold text-white bg-blue-900/30 px-2 py-0.5 rounded border border-blue-800">
+                {targetArea === "Tất cả" ? "Tất cả người dân trong khu vực" : `Người dân xã ${targetArea}`}
+              </span>
             </span>
           </div>
           <button

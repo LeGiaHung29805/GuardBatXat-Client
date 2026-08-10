@@ -5,6 +5,7 @@ import MonitorTab from "./components/MonitorTab";
 import EvacuateTab from "./components/EvacuateTab";
 import AnalyzeTab from "./components/AnalyzeTab";
 import AlertTab from "./components/AlertTab";
+import ModerateTab from "./components/ModerateTab";
 import api from "./utils/api";
 import websocket from "./utils/websocket";
 import type { ScenarioLevel, DamageStats, NotificationLog } from "./types";
@@ -23,8 +24,9 @@ import ToastContainer, { showToast } from "@/components/ui/Toast";
 const BAT_XAT_POPULATION = 3241;
 
 export default function PCTTCommanderDashboard() {
+  const [authorized, setAuthorized] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "monitor" | "evacuate" | "analyze" | "alert"
+    "monitor" | "evacuate" | "analyze" | "alert" | "moderate"
   >("monitor");
   const [scenarios, setScenarios] = useState<ScenarioLevel[]>([
     "80m",
@@ -46,18 +48,55 @@ export default function PCTTCommanderDashboard() {
     roadsBlocked: 0,
   });
 
+  const [incidentReports, setIncidentReports] = useState<any[]>([]);
+
   const [notifications, setNotifications] = useState<NotificationLog[]>([]);
 
   useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem("jwt_token") || localStorage.getItem("token");
+      if (!token) {
+        window.location.href = "/auth";
+        return;
+      }
+      try {
+        const profile = await api.getProfile();
+        const role = profile?.roleName;
+        if (role === "COMMANDER" || role === "ADMIN") {
+          setAuthorized(true);
+        } else {
+          window.location.href = "/";
+        }
+      } catch (err) {
+        window.location.href = "/auth";
+      }
+    };
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!authorized) return;
     setLastUpdate(new Date().toLocaleString("vi-VN"));
     setupWebSocket();
     fetchAlertHistory();
     fetchScenarios();
+    fetchIncidents();
 
     return () => {
       websocket.disconnect();
     };
-  }, []);
+  }, [authorized]);
+
+  const fetchIncidents = async () => {
+    try {
+      const res: any = await api.getIncidentReports();
+      if (res) {
+        setIncidentReports(res);
+      }
+    } catch (e) {
+      console.error("Lỗi khi tải danh sách sự cố cho bản đồ:", e);
+    }
+  };
 
   const fetchScenarios = async () => {
     try {
@@ -74,18 +113,20 @@ export default function PCTTCommanderDashboard() {
   };
 
   useEffect(() => {
+    if (!authorized) return;
     fetchDataForScenario();
-  }, [selectedScenario]);
+  }, [selectedScenario, authorized]);
 
   const fetchDataForScenario = async () => {
     try {
       setLoading(true);
       const levelNumber = selectedScenario.replace("m", "");
 
-      const [statsRes, floodRes, landslideRes] = await Promise.all([
+      const [statsRes, floodRes, landslideRes, incidentsRes] = await Promise.all([
         api.getDashboardStats(levelNumber),
         api.getCommanderFloodHeatmap(levelNumber),
         api.getCommanderLandslideHeatmap(),
+        api.getIncidentReports(),
       ]);
 
       setDamageStats({
@@ -97,6 +138,7 @@ export default function PCTTCommanderDashboard() {
 
       setFloodPoints(floodRes as any[]);
       setLandslidePoints(landslideRes as any[]);
+      setIncidentReports(incidentsRes as any[] || []);
       setLastUpdate(new Date().toLocaleString("vi-VN"));
     } catch (error) {
       console.error("Lỗi khi kéo dữ liệu Backend:", error);
@@ -171,14 +213,14 @@ export default function PCTTCommanderDashboard() {
     }
   };
 
-  const handleSendAlert = async (message: string, level: string = "WARNING") => {
+  const handleSendAlert = async (message: string, level: string = "WARNING", targetArea: string = "Tất cả") => {
     try {
       setLoading(true);
       await api.sendAlert({
         title: "CẢNH BÁO TỪ BAN CHỈ HUY",
         content: message,
         level,
-        targetArea: "Tất cả",
+        targetArea,
       });
 
       showToast("info", "Thành công", "Đã phát loa cảnh báo thành công!");
@@ -217,7 +259,16 @@ export default function PCTTCommanderDashboard() {
       icon: <TrendingUp size={18} />,
     },
     { id: "alert", label: "Phát cảnh báo", icon: <Megaphone size={18} /> },
+    { id: "moderate", label: "Kiểm duyệt sự cố", icon: <ShieldAlert size={18} /> },
   ];
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 text-white relative">
@@ -290,6 +341,7 @@ export default function PCTTCommanderDashboard() {
             onScenarioChange={handleScenarioChange}
             floodData={floodPoints}
             landslideData={landslidePoints}
+            incidentReports={incidentReports}
           />
         )}
         {activeTab === "evacuate" && (
@@ -312,6 +364,11 @@ export default function PCTTCommanderDashboard() {
           <AlertTab
             notifications={notifications}
             onSendAlert={handleSendAlert}
+          />
+        )}
+        {activeTab === "moderate" && (
+          <ModerateTab
+            onIncidentApproved={fetchDataForScenario}
           />
         )}
       </main>

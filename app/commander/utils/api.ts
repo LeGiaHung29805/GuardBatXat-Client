@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 interface ApiError {
   message: string;
@@ -30,6 +30,14 @@ class ApiService {
         errorMsg = json.message || textData;
       } catch (e) {
         errorMsg = textData;
+      }
+      
+      if (response.status === 401 || response.status === 403) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("jwt_token");
+          localStorage.removeItem("token");
+          window.location.href = "/auth";
+        }
       }
       throw { message: errorMsg, status: response.status };
     }
@@ -135,7 +143,11 @@ class ApiService {
 
     // Backend trả ApiResponse: token JWT nằm trong trường "data"
     const token = json.data;
+    if (!token) {
+      throw new Error("Không nhận được token từ máy chủ.");
+    }
     localStorage.setItem("jwt_token", token);
+    localStorage.setItem("token", token);
     return token;
   }
 
@@ -146,6 +158,21 @@ class ApiService {
 
   async getProfile() {
     return this.fetchWithAuth("/v1/users/me");
+  }
+
+  // ==================== KIỂM DUYỆT SỰ CỐ ====================
+  async getIncidentReports(status?: string) {
+    return this.fetchWithAuth(`/v1/incidents${status ? `?status=${status}` : ""}`);
+  }
+
+  async updateIncidentStatus(id: number, status: string) {
+    return this.fetchWithAuth(`/v1/incidents/${id}/status?status=${status}`, {
+      method: "PUT",
+    });
+  }
+
+  async getIncidentStats() {
+    return this.fetchWithAuth("/v1/incidents/stats");
   }
 }
 

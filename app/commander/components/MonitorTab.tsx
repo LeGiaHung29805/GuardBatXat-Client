@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import dynamic from "next/dynamic";
 import type { ScenarioLevel } from "../types";
-import { Map, Ruler, Droplets, AlertTriangle } from "lucide-react"; // Import thư viện Icon
+import { Map, Ruler, Droplets, AlertTriangle, ShieldAlert } from "lucide-react"; // Import thư viện Icon
 
 // Import Map động để tránh lỗi SSR của Next.js
 const MapComponent = dynamic(() => import("./MapComponent"), { ssr: false });
@@ -12,9 +12,12 @@ interface Props {
   onScenarioChange: (scenario: ScenarioLevel) => void;
   floodData: any[]; // Dữ liệu thật từ DB
   landslideData: any[]; // Dữ liệu thật từ DB
+  incidentReports?: any[];
 }
 
-export default function MonitorTab({ scenarios, selectedScenario, onScenarioChange, floodData, landslideData }: Props) {
+export default function MonitorTab({ scenarios, selectedScenario, onScenarioChange, floodData, landslideData, incidentReports = [] }: Props) {
+  const activeIncidents = incidentReports.filter((r: any) => r.status?.toUpperCase() === "APPROVED");
+
   return (
     <div className="space-y-6">
       {/* TIÊU ĐỀ CHÍNH */}
@@ -29,7 +32,7 @@ export default function MonitorTab({ scenarios, selectedScenario, onScenarioChan
           <h3 className="text-xl font-bold">Bản đồ Định vị Điểm Nóng</h3>
           
           {/* CHÚ THÍCH (LEGEND) ĐÃ ĐƯỢC NÂNG CẤP ICON */}
-          <div className="flex gap-5">
+          <div className="flex gap-4 flex-wrap">
              <span className="flex items-center gap-1.5 text-sm font-semibold text-blue-400 bg-blue-900/30 px-3 py-1 rounded-full border border-blue-800/50">
                <Droplets size={16} /> 
                Điểm ngập ({floodData.length})
@@ -38,11 +41,19 @@ export default function MonitorTab({ scenarios, selectedScenario, onScenarioChan
                <AlertTriangle size={16} /> 
                Sạt lở ({landslideData.length})
              </span>
+             <span className="flex items-center gap-1.5 text-sm font-semibold text-yellow-400 bg-yellow-900/30 px-3 py-1 rounded-full border border-yellow-800/50">
+               <ShieldAlert size={16} /> 
+               Sự cố hiện trường ({activeIncidents.length})
+             </span>
           </div>
         </div>
         
         {/* Bản đồ */}
-        <MapComponent floodPoints={floodData} landslidePoints={landslideData} />
+        <MapComponent 
+          floodPoints={floodData} 
+          landslidePoints={landslideData} 
+          incidentReports={incidentReports}
+        />
       </div>
 
       {/* Kịch bản Mực Nước */}
