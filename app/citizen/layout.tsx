@@ -95,8 +95,8 @@ export default function CitizenLayout({
         </nav>
 
         {/* Khu vực Auth / Logout */}
-        <div className="flex items-center">
-          {/* Để trống để GlobalUI.tsx tự render ở góc trên bên phải */}
+        <div className="hidden md:block w-64 shrink-0">
+          {/* Khoảng trống dành cho nút Đăng nhập / Hồ sơ cá nhân hiển thị cân đối */}
         </div>
       </header>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ApiClient } from '@/lib/ApiClient';
 import { SosRequest } from '@/lib/Model';
 
@@ -19,6 +19,14 @@ export default function SosButton() {
 
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+    // Drag states for SOS button
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const dragStart = useRef({ x: 0, y: 0 });
+    const dragOffset = useRef({ x: 0, y: 0 });
+    const didDrag = useRef(false);
+    const dragStartTime = useRef(0);
+
     // Kiểm tra trạng thái đăng nhập
     useEffect(() => {
         const token = localStorage.getItem('jwt_token') || localStorage.getItem('token');
@@ -28,6 +36,74 @@ export default function SosButton() {
             setIsLoggedIn(false);
         }
     }, []);
+
+    const sendSosWithCoords = async (lat: number, lng: number, isFallback = false) => {
+        try {
+            // 2. Chuẩn bị payload
+            const payload: SosRequest = {
+                lat: lat,
+                lng: lng,
+                message: message + (isFallback ? " (LƯU Ý: Không xác định được GPS chính xác của thiết bị, đang dùng tọa độ mặc định)" : "")
+            };
+
+            if (!isLoggedIn) {
+                payload.senderName = name;
+                payload.senderPhone = phone;
+                payload.totalPeople = Number(totalPeople) || 1;
+                payload.elderlyCount = Number(elderlyCount) || 0;
+                payload.childrenCount = Number(childrenCount) || 0;
+            }
+
+            // 3. Gửi dữ liệu qua API
+            const result = await ApiClient.sendSosAlert(payload);
+
+            if (result.code === 200) {
+                const responseData = result.data;
+                const textMsg = responseData && typeof responseData === 'object' && responseData.message 
+                    ? responseData.message 
+                    : (typeof responseData === 'string' ? responseData : 'Tín hiệu đã được phát đi!');
+                
+                const finalMsg = isFallback 
+                    ? `⚠️ ${textMsg} (Dùng tọa độ mặc định do lỗi GPS)` 
+                    : textMsg;
+
+                setStatusMsg({ type: 'success', text: finalMsg });
+                
+                // Lưu ID và SĐT vào localStorage
+                if (typeof window !== 'undefined') {
+                    if (responseData && typeof responseData === 'object' && responseData.id) {
+                        localStorage.setItem('sos:my_sos_id', String(responseData.id));
+                    }
+                    if (!isLoggedIn && phone) {
+                        localStorage.setItem('sos:my_phone', phone);
+                    }
+                    window.dispatchEvent(new CustomEvent('sos-sent'));
+                }
+                
+                // Tự động đóng modal sau 3 giây
+                setTimeout(() => {
+                    setIsOpen(false);
+                    // Reset form if guest
+                    if (!isLoggedIn) {
+                        setName('');
+                        setPhone('');
+                        setMessage('');
+                        setTotalPeople(1);
+                        setElderlyCount(0);
+                        setChildrenCount(0);
+                    } else {
+                        setMessage('');
+                    }
+                }, 3000);
+            } else {
+                setStatusMsg({ type: 'error', text: result.status || 'Gửi SOS thất bại.' });
+            }
+        } catch (error: any) {
+            setStatusMsg({ type: 'error', text: error.message || 'Gửi SOS thất bại.' });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSendSos = () => {
         // Validate khách (Guest)
@@ -41,75 +117,77 @@ export default function SosButton() {
         setLoading(true);
         setStatusMsg(null);
 
-        // 1. Lấy vị trí GPS của người dùng
+        // Lấy vị trí GPS của người dùng
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-
-                    try {
-                        // 2. Chuẩn bị payload
-                        const payload: SosRequest = {
-                            lat: lat,
-                            lng: lng,
-                            message: message
-                        };
-
-                        if (!isLoggedIn) {
-                            payload.senderName = name;
-                            payload.senderPhone = phone;
-                            payload.totalPeople = Number(totalPeople) || 1;
-                            payload.elderlyCount = Number(elderlyCount) || 0;
-                            payload.childrenCount = Number(childrenCount) || 0;
-                        }
-
-                        // 3. Gửi dữ liệu qua API
-                        const result = await ApiClient.sendSosAlert(payload);
-
-                        if (result.code === 200) {
-                            setStatusMsg({ type: 'success', text: result.data || 'Tín hiệu đã được phát đi!' });
-                            // Tự động đóng modal sau 3 giây
-                            setTimeout(() => {
-                                setIsOpen(false);
-                                // Reset form if guest
-                                if (!isLoggedIn) {
-                                    setName('');
-                                    setPhone('');
-                                    setMessage('');
-                                    setTotalPeople(1);
-                                    setElderlyCount(0);
-                                    setChildrenCount(0);
-                                } else {
-                                    setMessage('');
-                                }
-                            }, 3000);
-                        }
-                    } catch (error: any) {
-                        setStatusMsg({ type: 'error', text: error.message });
-                    } finally {
-                        setLoading(false);
-                    }
+                    await sendSosWithCoords(lat, lng);
                 },
-                (error) => {
-                    setStatusMsg({ type: 'error', text: 'Không thể lấy định vị GPS. Hãy bật Vị trí (Location) trên thiết bị!' });
-                    setLoading(false);
+                async (error) => {
+                    console.warn("GPS failed, using fallback:", error.message);
+                    await sendSosWithCoords(22.6105, 103.8012, true);
                 },
-                { enableHighAccuracy: true, timeout: 10000 }
+                { enableHighAccuracy: true, timeout: 5000 }
             );
         } else {
-            setStatusMsg({ type: 'error', text: 'Trình duyệt không hỗ trợ định vị GPS.' });
-            setLoading(false);
+            sendSosWithCoords(22.6105, 103.8012, true);
         }
+    };
+
+    const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+        setIsDragging(true);
+        dragStart.current = { x: e.clientX, y: e.clientY };
+        dragOffset.current = { ...position };
+        didDrag.current = false;
+        dragStartTime.current = Date.now();
+        e.currentTarget.setPointerCapture(e.pointerId);
+    };
+
+    const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+        if (!isDragging) return;
+        const dx = e.clientX - dragStart.current.x;
+        const dy = e.clientY - dragStart.current.y;
+        if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
+            didDrag.current = true;
+        }
+        setPosition({
+            x: dragOffset.current.x + dx,
+            y: dragOffset.current.y + dy
+        });
+    };
+
+    const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+        setIsDragging(false);
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        
+        const duration = Date.now() - dragStartTime.current;
+        if (!didDrag.current && duration < 300) {
+            setIsOpen(true);
+        }
+    };
+
+    const handleButtonClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
     };
 
     return (
         <>
-            {/* NÚT BẤM SOS NỔI (LUÔN Ở GÓC DƯỚI BÊN PHẢI) */}
+            {/* NÚT BẤM SOS NỔI (CÓ THỂ DI CHUYỂN BẰNG CÁCH KÉO THẢ) */}
             <button
-                onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-red-600 rounded-full shadow-2xl flex items-center justify-center border-4 border-white animate-bounce hover:bg-red-700 transition-colors"
-                title="Gửi tín hiệu cấp cứu khẩn cấp"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onClick={handleButtonClick}
+                className={`fixed z-50 w-16 h-16 bg-red-600 rounded-full shadow-2xl flex items-center justify-center border-4 border-white hover:bg-red-700 transition-colors cursor-move select-none touch-none ${isDragging ? '' : 'animate-bounce'}`}
+                style={{
+                    transform: `translate(${position.x}px, ${position.y}px)`,
+                    bottom: '24px',
+                    right: '24px'
+                }}
+                title="Gửi tín hiệu cấp cứu khẩn cấp (Nhấn giữ kéo để di chuyển)"
             >
                 <span className="text-white font-black text-xl tracking-widest">SOS</span>
                 {/* Vòng tròn đập nhịp tim bao quanh nút */}

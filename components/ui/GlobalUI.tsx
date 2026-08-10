@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ApiClient, setAuthToken } from "@/lib/ApiClient";
 import SosButton from "@/components/ui/SosButton";
@@ -95,6 +95,7 @@ export default function GlobalUI() {
     const [isLoginMode, setIsLoginMode] = useState(true);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
+    const [successMsg, setSuccessMsg] = useState("");
 
     // Trạng thái người dùng
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -139,11 +140,12 @@ export default function GlobalUI() {
             try {
                 const res = await ApiClient.getPublicNotifications();
                 if (res.code === 200 && res.data) {
-                    const filtered = res.data.filter((n: any) => {
-                        const isRescue = 
-                            n.targetArea?.includes("RESCUE_LOG") || 
-                            n.title?.includes("Field Update") || 
-                            n.title?.includes("cứu hộ") || 
+                    const dataArray = Array.isArray(res.data) ? res.data : [];
+                    const filtered = dataArray.filter((n: any) => {
+                        const isRescue =
+                            n.targetArea?.includes("RESCUE_LOG") ||
+                            n.title?.includes("Field Update") ||
+                            n.title?.includes("cứu hộ") ||
                             n.title?.includes("Cứu hộ");
                         return !isRescue || !!userId;
                     });
@@ -174,6 +176,55 @@ export default function GlobalUI() {
         return () => clearTimeout(timer);
     }, [activeAlert, alertCountdown]);
 
+    // Drag states for Notification/Bell panel
+    const [bellPos, setBellPos] = useState({ x: 0, y: 0 });
+    const [isDraggingBell, setIsDraggingBell] = useState(false);
+    const bellDragStart = useRef({ x: 0, y: 0 });
+    const bellDragOffset = useRef({ x: 0, y: 0 });
+    const bellDidDrag = useRef(false);
+    const bellDragStartTime = useRef(0);
+
+    const handleBellPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.bell-drag-target')) {
+            return;
+        }
+        setIsDraggingBell(true);
+        bellDragStart.current = { x: e.clientX, y: e.clientY };
+        bellDragOffset.current = { ...bellPos };
+        bellDidDrag.current = false;
+        bellDragStartTime.current = Date.now();
+        e.currentTarget.setPointerCapture(e.pointerId);
+    };
+
+    const handleBellPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!isDraggingBell) return;
+        const dx = e.clientX - bellDragStart.current.x;
+        const dy = e.clientY - bellDragStart.current.y;
+        if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
+            bellDidDrag.current = true;
+        }
+        setBellPos({
+            x: bellDragOffset.current.x + dx,
+            y: bellDragOffset.current.y + dy
+        });
+    };
+
+    const handleBellPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+        setIsDraggingBell(false);
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        
+        const duration = Date.now() - bellDragStartTime.current;
+        if (!bellDidDrag.current && duration < 300) {
+            handleToggleBellPanel();
+        }
+    };
+
+    const handleBellClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
     // Kiểm tra đăng nhập ngay khi load trang
     useEffect(() => {
         const checkAuth = async () => {
@@ -186,6 +237,13 @@ export default function GlobalUI() {
                     setUserName(res.data.fullName);
                     setUserRole(res.data.roleName);
                     setUserId(res.data.userId);
+
+                    // Lưu số điện thoại hoặc tên đăng nhập để làm sạch bộ lọc cứu hộ
+                    if (res.data.phoneNumber) {
+                        localStorage.setItem("sos:my_phone", res.data.phoneNumber);
+                    } else if (res.data.username) {
+                        localStorage.setItem("sos:my_phone", res.data.username);
+                    }
                 } catch (error) {
                     localStorage.removeItem("jwt_token");
                     setAuthToken(null);
@@ -206,15 +264,29 @@ export default function GlobalUI() {
                     return;
                 }
 
-                // Nếu là thông báo cứu hộ/nhật ký hiện trường nhưng là khách vãng lai, bỏ qua
-                const isRescueMsg = 
-                    data.level === "Cứu hộ" || 
-                    data.title?.includes("cứu hộ") || 
-                    data.title?.includes("Cứu hộ") || 
-                    data.title?.includes("Field Update") || 
+                // Kiểm tra so khớp thông báo riêng tư theo SOS ID hoặc Số điện thoại (dành cho cả Citizen và Guest)
+                let isMyPrivateAlert = false;
+                if (data.targetSosId || data.targetPhone) {
+                    const mySosId = localStorage.getItem('sos:my_sos_id');
+                    const myPhone = localStorage.getItem('sos:my_phone');
+                    isMyPrivateAlert = !!(
+                        (mySosId && String(data.targetSosId) === String(mySosId)) ||
+                        (myPhone && String(data.targetPhone) === String(myPhone))
+                    );
+                    if (!isMyPrivateAlert) {
+                        return;
+                    }
+                }
+
+                // Nếu là thông báo cứu hộ/nhật ký hiện trường nhưng là khách vãng lai (không phải của mình), bỏ qua
+                const isRescueMsg =
+                    data.level === "Cứu hộ" ||
+                    data.title?.includes("cứu hộ") ||
+                    data.title?.includes("Cứu hộ") ||
+                    data.title?.includes("Field Update") ||
                     data.targetArea?.includes("RESCUE_LOG");
-                
-                if (isRescueMsg && !userId) {
+
+                if (isRescueMsg && !isMyPrivateAlert && !userId) {
                     return;
                 }
 
@@ -280,6 +352,19 @@ export default function GlobalUI() {
 
         websocket.subscribe("/topic/rescue-tracking", (data: RescueTrackingUpdate) => {
             if (userRole === "CITIZEN" || userRole === "GUEST") {
+                // Chỉ nhận thông tin tracking nếu nó thuộc về yêu cầu SOS của mình
+                const mySosId = localStorage.getItem('sos:my_sos_id');
+                const myPhone = localStorage.getItem('sos:my_phone');
+
+                const isMySos = !!(
+                    (mySosId && (String(data.sosId) === String(mySosId) || String(data.missionId) === String(mySosId) || String((data as any).entityId) === String(mySosId))) ||
+                    (myPhone && (data.message?.includes(myPhone) || String((data as any).entityId) === String(myPhone)))
+                );
+
+                if (!isMySos) {
+                    return; // Bỏ qua nếu không phải
+                }
+
                 setRescueTracking(data);
                 try {
                     appendTrackingHistoryUpdate(data);
@@ -343,6 +428,7 @@ export default function GlobalUI() {
         e.preventDefault();
         setLoading(true);
         setErrorMsg("");
+        setSuccessMsg("");
 
         try {
             if (isLoginMode) {
@@ -352,7 +438,11 @@ export default function GlobalUI() {
                 });
 
                 const token = res.data;
+                if (!token) {
+                    throw new Error("Không nhận được token từ máy chủ.");
+                }
                 localStorage.setItem("jwt_token", token);
+                localStorage.setItem("token", token);
 
                 setAuthToken(token);
 
@@ -370,6 +460,8 @@ export default function GlobalUI() {
                     router.push("/rescue");
                 } else if (roleName === "ADMIN") {
                     router.push("/admin");
+                } else if (roleName === "COMMANDER") {
+                    router.push("/commander");
                 } else {
                     // Nếu đang ở trang chủ, có thể chuyển sang trang sơ tán
                     if (window.location.pathname === "/") {
@@ -378,13 +470,14 @@ export default function GlobalUI() {
                 }
             } else {
                 await ApiClient.register({
+                    username: formData.emailOrPhone,
                     emailOrPhone: formData.emailOrPhone,
                     password: formData.password,
                     fullName: formData.fullName,
                     roleName: "CITIZEN",
                 });
                 setIsLoginMode(true);
-                setErrorMsg("Đăng ký thành công! Hãy đăng nhập.");
+                setSuccessMsg("Đăng ký thành công! Hãy đăng nhập.");
             }
         } catch (error: any) {
             setErrorMsg(error.message || "Lỗi xác thực.");
@@ -395,6 +488,22 @@ export default function GlobalUI() {
 
     const handleLogout = () => {
         localStorage.removeItem("jwt_token");
+        localStorage.removeItem("token");
+        localStorage.removeItem("sos:my_sos_id");
+        localStorage.removeItem("sos:my_phone");
+        localStorage.removeItem("rescue:latest-tracking-update");
+        localStorage.removeItem("rescue:latest-route-path");
+
+        // Clear all keys starting with 'rescue:' or 'sos:'
+        if (typeof window !== 'undefined') {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith("rescue:") || key.startsWith("sos:"))) {
+                    localStorage.removeItem(key);
+                }
+            }
+        }
+
         setAuthToken(null);
         setIsLoggedIn(false);
         setUserRole("GUEST");
@@ -407,7 +516,9 @@ export default function GlobalUI() {
     return (
         <>
             <ToastContainer />
-            <div className="fixed top-4 right-4 z-50 flex items-center gap-4">
+            <div 
+                className="fixed top-3.5 right-6 z-50 flex items-center gap-4 select-none"
+            >
                 {isLoggedIn ? (
                     <div className="flex items-center gap-3 bg-slate-900/80 backdrop-blur border border-slate-700 p-2 rounded-full shadow-lg">
                         {showGreeting && (
@@ -439,7 +550,17 @@ export default function GlobalUI() {
 
                         {/* Nút Đóng Modal */}
                         <button
-                            onClick={() => setIsAuthModalOpen(false)}
+                            onClick={() => {
+                                setIsAuthModalOpen(false);
+                                setErrorMsg("");
+                                setSuccessMsg("");
+                                setFormData({
+                                    identifier: "",
+                                    emailOrPhone: "",
+                                    password: "",
+                                    fullName: "",
+                                });
+                            }}
                             className="absolute top-4 right-4 text-slate-400 hover:text-white"
                         >
                             ✕
@@ -450,8 +571,14 @@ export default function GlobalUI() {
                         </h2>
 
                         {errorMsg && (
-                            <div className={`text-sm p-3 rounded mb-4 text-center ${errorMsg.includes('thành công') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/50' : 'bg-red-500/10 text-red-400 border border-red-500/50'}`}>
+                            <div className="text-sm p-3 rounded mb-4 text-center bg-red-500/10 text-red-400 border border-red-500/50">
                                 {errorMsg}
+                            </div>
+                        )}
+
+                        {successMsg && (
+                            <div className="text-sm p-3 rounded mb-4 text-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/50">
+                                {successMsg}
                             </div>
                         )}
 
@@ -505,7 +632,17 @@ export default function GlobalUI() {
 
                         <div className="mt-4 text-center text-sm">
                             <button
-                                onClick={() => { setIsLoginMode(!isLoginMode); setErrorMsg(""); }}
+                                onClick={() => {
+                                    setIsLoginMode(!isLoginMode);
+                                    setErrorMsg("");
+                                    setSuccessMsg("");
+                                    setFormData({
+                                        identifier: "",
+                                        emailOrPhone: "",
+                                        password: "",
+                                        fullName: "",
+                                    });
+                                }}
                                 className="text-emerald-400 hover:underline"
                             >
                                 {isLoginMode ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập"}
@@ -525,7 +662,17 @@ export default function GlobalUI() {
 
             {/* 4. NÚT CHUÔNG CẢNH BÁO NỔI & PANEL THÔNG BÁO */}
             {(userRole === "GUEST" || userRole === "CITIZEN") && (
-                <div className="fixed bottom-24 right-6 z-50 flex flex-col items-end">
+                <div 
+                    onPointerDown={handleBellPointerDown}
+                    onPointerMove={handleBellPointerMove}
+                    onPointerUp={handleBellPointerUp}
+                    className="fixed z-50 flex flex-col items-end select-none touch-none"
+                    style={{
+                        transform: `translate(${bellPos.x}px, ${bellPos.y}px)`,
+                        bottom: '96px',
+                        right: '24px'
+                    }}
+                >
                     {/* Panel thông báo */}
                     {isBellPanelOpen && (
                         <div className="mb-3 w-80 sm:w-96 bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md animate-fade-in-up">
@@ -584,12 +731,12 @@ export default function GlobalUI() {
 
                     {/* Nút chuông */}
                     <button
-                        onClick={handleToggleBellPanel}
-                        className={`w-14 h-14 rounded-full flex items-center justify-center border shadow-2xl relative transition-all duration-300 active:scale-95 ${unreadCount > 0
+                        onClick={handleBellClick}
+                        className={`w-14 h-14 rounded-full flex items-center justify-center border shadow-2xl relative transition-all duration-300 active:scale-95 cursor-move bell-drag-target ${unreadCount > 0
                             ? "bg-red-600 hover:bg-red-700 border-red-500 text-white animate-pulse"
                             : "bg-slate-900/90 hover:bg-slate-800 border-slate-700 text-slate-300"
                             }`}
-                        title="Thông báo từ Ban chỉ huy"
+                        title="Thông báo từ Ban chỉ huy (Nhấn giữ kéo để di chuyển)"
                     >
                         {unreadCount > 0 ? (
                             <BellRing className="w-6 h-6 animate-bounce" />
