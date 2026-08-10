@@ -41,40 +41,70 @@ export default function ProfilePage() {
             try {
                 setAuthToken(token);
 
-                // Lúc lấy dữ liệu vẫn phải lấy từ 2 API vì Backend đang tách 2 bảng
-                const [basicRes, survivalRes] = await Promise.all([
-                    ApiClient.getMyProfile(),
-                    ApiClient.getMySurvivalProfile()
-                ]);
-
-                if (basicRes.data) {
-                    setBasicInfo({
-                        fullName: basicRes.data.fullName || "",
-                        email: basicRes.data.email || "",
-                        phoneNumber: basicRes.data.phoneNumber || "",
-                        roleName: basicRes.data.roleName || ""
-                    });
+                // 1. Tải thông tin cơ bản trước
+                let basicRes;
+                try {
+                    basicRes = await ApiClient.getMyProfile();
+                    if (basicRes && basicRes.data) {
+                        setBasicInfo({
+                            fullName: basicRes.data.fullName || "",
+                            email: basicRes.data.email || "",
+                            phoneNumber: basicRes.data.phoneNumber || "",
+                            roleName: basicRes.data.roleName || ""
+                        });
+                    }
+                } catch (err: any) {
+                    console.error("Lỗi tải thông tin cơ bản:", err);
+                    const isAuthError = err.status === 401 || err.status === 403 || 
+                                        (err.message && (err.message.includes("401") || err.message.includes("403")));
+                    if (isAuthError) {
+                        throw err; // Ném lỗi lên để catch ngoài xử lý logout/redirect
+                    } else {
+                        setMessage({ type: "error", text: "Không thể kết nối đến máy chủ để tải thông tin tài khoản." });
+                        setIsLoading(false);
+                        return;
+                    }
                 }
 
-                if (survivalRes.data) {
-                    setSurvivalProfile({
-                        totalMembers: survivalRes.data.totalMembers || 1,
-                        elderlyCount: survivalRes.data.elderlyCount || 0,
-                        childrenCount: survivalRes.data.childrenCount || 0,
-                        disabledCount: survivalRes.data.disabledCount || 0,
-                        emergencyContactName: survivalRes.data.emergencyContactName || "",
-                        emergencyContactPhone: survivalRes.data.emergencyContactPhone || "",
-                        medicalNotes: survivalRes.data.medicalNotes || "",
-                        specialAssets: survivalRes.data.specialAssets || ""
-                    });
+                // 2. Tải hồ sơ sinh tồn riêng biệt (tránh làm sập toàn bộ trang nếu chưa có hoặc lỗi cache)
+                try {
+                    const survivalRes = await ApiClient.getMySurvivalProfile();
+                    if (survivalRes && survivalRes.data) {
+                        setSurvivalProfile({
+                            totalMembers: survivalRes.data.totalMembers || 1,
+                            elderlyCount: survivalRes.data.elderlyCount || 0,
+                            childrenCount: survivalRes.data.childrenCount || 0,
+                            disabledCount: survivalRes.data.disabledCount || 0,
+                            emergencyContactName: survivalRes.data.emergencyContactName || "",
+                            emergencyContactPhone: survivalRes.data.emergencyContactPhone || "",
+                            medicalNotes: survivalRes.data.medicalNotes || "",
+                            specialAssets: survivalRes.data.specialAssets || ""
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Chưa có hồ sơ sinh tồn hoặc lỗi tải hồ sơ sinh tồn:", err);
+                    // Không ném lỗi ra ngoài để người dùng vẫn xem được trang cá nhân và cập nhật hồ sơ mới
                 }
-            } catch (error) {
-                console.error("Lỗi tải hồ sơ:", error);
+
+            } catch (error: any) {
+                console.error("Lỗi xác thực tải hồ sơ:", error);
                 setMessage({ type: "error", text: "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại." });
                 setTimeout(() => {
                     localStorage.removeItem("jwt_token");
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("sos:my_sos_id");
+                    localStorage.removeItem("sos:my_phone");
+                    localStorage.removeItem("rescue:latest-tracking-update");
+                    localStorage.removeItem("rescue:latest-route-path");
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const key = localStorage.key(i);
+                        if (key && (key.startsWith("rescue:") || key.startsWith("sos:"))) {
+                            localStorage.removeItem(key);
+                        }
+                    }
                     router.push("/auth");
                 }, 2000);
+                return;
             } finally {
                 setIsLoading(false);
             }

@@ -18,6 +18,7 @@ const RealtimeHeatmap = () => {
     const [points, setPoints] = useState<[number, number, number][]>([]);
     const [lastUpdated, setLastUpdated] = useState<string>("Chưa có dữ liệu");
     const [connectionStatus, setConnectionStatus] = useState<"Đang tải" | "Trực tuyến" | "Mất kết nối">("Đang tải");
+    const [isDemoData, setIsDemoData] = useState<boolean>(false);
     const [isMounted, setIsMounted] = useState(false);
     const stompClientRef = useRef<Client | null>(null);
 
@@ -47,6 +48,7 @@ const RealtimeHeatmap = () => {
                         }
                         return [22.6105, 103.8012, 0.5];
                     });
+                    setIsDemoData(false);
                 } else {
                     // Dữ liệu mặc định
                     formattedData = [
@@ -54,6 +56,7 @@ const RealtimeHeatmap = () => {
                         [22.615, 103.805, 0.3],
                         [22.608, 103.798, 0.7],
                     ];
+                    setIsDemoData(true);
                 }
                 
                 setPoints(formattedData);
@@ -68,13 +71,15 @@ const RealtimeHeatmap = () => {
                     [22.615, 103.805, 0.3],
                     [22.608, 103.798, 0.7],
                 ]);
+                setIsDemoData(true);
             }
         };
 
         initData();
 
         // 2. THIẾT LẬP KẾT NỐI WEBSOCKET
-        const socket = new SockJS('http://localhost:8080/ws-guardbatxat');
+        const socketUrl = typeof window !== 'undefined' ? `${window.location.origin}/ws` : 'http://localhost:8080/ws-guardbatxat';
+        const socket = new SockJS(socketUrl);
         const client = new Client({
             webSocketFactory: () => socket,
             reconnectDelay: 5000,
@@ -84,6 +89,7 @@ const RealtimeHeatmap = () => {
                 setConnectionStatus("Trực tuyến");
                 console.log("🟢 WebSocket Connected");
 
+                // Đăng ký kênh cập nhật sạt lở kết hợp
                 client.subscribe('/topic/heatmap-updates', (message) => {
                     try {
                         const newData: any = JSON.parse(message.body);
@@ -102,10 +108,34 @@ const RealtimeHeatmap = () => {
                         
                         if (formattedData.length > 0) {
                             setPoints(formattedData);
+                            setIsDemoData(false);
                             setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
                         }
                     } catch (err) {
                         console.error("Error parsing WebSocket message:", err);
+                    }
+                });
+
+                // Đăng ký kênh cập nhật ngập lụt (tải lại bản đồ kép kết hợp mới nhất từ API)
+                client.subscribe('/topic/flood-updates', async () => {
+                    try {
+                        const data = await ApiClient.getInitialLandslideData();
+                        let formattedData: [number, number, number][] = [];
+                        if (Array.isArray(data) && data.length > 0) {
+                            formattedData = data.map(point => {
+                                if (Array.isArray(point)) {
+                                    return [point[0], point[1], point[2] || 0.5];
+                                } else if (point && typeof point === 'object') {
+                                    return [point.lat, point.lng, point.weight || 0.5];
+                                }
+                                return [22.6105, 103.8012, 0.5];
+                            });
+                            setPoints(formattedData);
+                            setIsDemoData(false);
+                            setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
+                        }
+                    } catch (err) {
+                        console.error("Error refetching combined data on flood update:", err);
                     }
                 });
             },
@@ -160,6 +190,11 @@ const RealtimeHeatmap = () => {
                         <span className="text-sm font-semibold text-slate-500">Dữ liệu mới nhất:</span>
                         <span className="text-lg font-mono font-bold text-indigo-600">{lastUpdated}</span>
                     </div>
+                    {isDemoData && (
+                        <div className="bg-amber-100 border border-amber-200 text-amber-800 text-[11px] rounded-lg p-2 font-medium mt-1 leading-relaxed">
+                            ⚠️ Đang hiển thị dữ liệu mô phỏng/demo (chưa kết nối CSDL GIS thực tế).
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-2 space-y-2 border-t pt-4">

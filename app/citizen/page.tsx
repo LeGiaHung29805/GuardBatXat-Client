@@ -20,7 +20,8 @@ export default function CitizenDashboardPage() {
                 ]);
                 if (statsRes.code === 200) setStats(statsRes.data);
                 if (notifyRes.code === 200) {
-                    const publicOnly = notifyRes.data.filter((n: NotificationItem) => 
+                    const dataArray = Array.isArray(notifyRes.data) ? notifyRes.data : [];
+                    const publicOnly = dataArray.filter((n: NotificationItem) => 
                         !n.isPersonal && 
                         !n.title?.includes("Field Update") && 
                         !n.targetArea?.includes("RESCUE_LOG")
@@ -175,7 +176,7 @@ export default function CitizenDashboardPage() {
                             <Megaphone className="w-5 h-5" />
                         </div>
                         <div>
-                            <span className="text-[10px] text-slate-500 uppercase font-black block">Bản tin BCH mới</span>
+                            <span className="text-[10px] text-slate-500 uppercase font-black block">Bản tin hôm nay</span>
                             <span className="text-sm font-bold text-slate-200">
                                 {notifications ? `${notifications.length} bản tin` : 'Đang tải...'}
                             </span>

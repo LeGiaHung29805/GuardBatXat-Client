@@ -2,23 +2,25 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  output: "standalone",
 
   allowedDevOrigins: [
     "localhost",
     "192.168.102.21",
     "127.0.0.1",
-    "rounding-slate-brisket.ngrok-free.dev",
+    "playmate-chess-overbuilt.ngrok-free.dev",
   ],
 
   async rewrites() {
+    const backendUrl = process.env.INTERNAL_API_URL || "http://127.0.0.1:8080";
     return [
       {
         source: "/api/:path*",
-        destination: "http://127.0.0.1:8080/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
       },
       {
         source: "/ws/:path*",
-        destination: "http://127.0.0.1:8080/ws/:path*",
+        destination: `${backendUrl}/ws/:path*`,
       },
     ];
   },

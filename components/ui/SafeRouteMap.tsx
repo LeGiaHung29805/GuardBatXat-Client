@@ -12,6 +12,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect } from "react";
+import { findClosestIndex } from "@/lib/utils";
 
 // Icon Điểm A (Vị trí của bạn - Màu xanh dương)
 const startIcon = L.divIcon({
@@ -79,8 +80,22 @@ export default function SafeRouteMap({
   destLoc,
   setDestLoc,
   routeCoords,
+  routes = [],
+  selectedRouteIndex = 0,
+  onSelectRouteIndex,
   blockedSegments = [],
 }: any) {
+  // Chuẩn hóa dữ liệu tuyến đường để tương thích ngược với routeCoords cũ
+  const activeRoutes = routes && routes.length > 0
+    ? routes
+    : routeCoords && routeCoords.length > 0
+      ? [{ pathPoints: routeCoords, totalDistance: 0 }]
+      : [];
+  const activeIndex = selectedRouteIndex ?? 0;
+
+  // Lấy danh sách điểm của tuyến đang chọn để RouteController lấy bounds zoom map
+  const selectedRoutePoints = activeRoutes[activeIndex]?.pathPoints || [];
+
   return (
     <MapContainer
       center={[22.6105, 103.8012]}
@@ -93,7 +108,7 @@ export default function SafeRouteMap({
       />
       <TileLayer url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png" />
 
-      <RouteController routeCoords={routeCoords} startNode={startLoc} />
+      <RouteController routeCoords={selectedRoutePoints} startNode={startLoc} />
       <ClickHandler setDestination={setDestLoc} />
 
       {/* Điểm xuất phát (A) */}
@@ -110,49 +125,107 @@ export default function SafeRouteMap({
         </Marker>
       )}
 
-      {/* Đường đi an toàn */}
-      {routeCoords && routeCoords.length > 0 && (
-        <>
-          {startLoc && (
-            <Polyline
-              positions={[[startLoc.lat, startLoc.lng], routeCoords[0]]}
-              color="#3b82f6" // Xanh dương cho đoạn kết nối GPS
-              weight={4}
-              dashArray="8, 8"
-              opacity={0.8}
-            />
-          )}
+      {/* Danh sách các lộ trình an toàn tìm được */}
+      {activeRoutes.map((r: any, idx: number) => {
+        const isSelected = idx === activeIndex;
+        const coords = r.pathPoints;
+        if (!coords || coords.length === 0) return null;
 
-          <Polyline
-            positions={routeCoords}
-            color="#10b981" // Xanh lá Emerald an toàn
-            weight={6}
-            opacity={0.9}
-            lineCap="round"
-            lineJoin="round"
-          />
+        if (isSelected) {
+          // Tính điểm gần GPS nhất để chia và làm mờ đoạn đã đi qua
+          let closestIdx = 0;
+          if (startLoc) {
+            closestIdx = findClosestIndex(coords, [startLoc.lat, startLoc.lng]);
+          }
 
-          {destLoc && (
+          const traversedCoords = coords.slice(0, closestIdx + 1);
+          const remainingCoords = coords.slice(closestIdx);
+
+          // Phối màu cho các tuyến đường (Tuyến 1: xanh lá, Tuyến 2: cyan/xanh dương, Tuyến 3: tím)
+          const activeColor = idx === 0 ? "#10b981" : idx === 1 ? "#06b6d4" : "#8b5cf6";
+
+          return (
+            <div key={`active-route-${idx}`}>
+              {/* Nối nét đứt từ GPS hiện tại tới điểm bắt đầu lộ trình còn lại */}
+              {startLoc && remainingCoords.length > 0 && (
+                <Polyline
+                  positions={[[startLoc.lat, startLoc.lng], remainingCoords[0]]}
+                  color="#3b82f6"
+                  weight={4}
+                  dashArray="6, 6"
+                  opacity={0.8}
+                />
+              )}
+
+              {/* Đoạn đã đi qua (Xám mờ) */}
+              {traversedCoords.length > 1 && (
+                <Polyline
+                  positions={traversedCoords}
+                  color="#64748b"
+                  weight={4}
+                  opacity={0.4}
+                  lineCap="round"
+                  lineJoin="round"
+                />
+              )}
+
+              {/* Đoạn còn lại (Màu chủ đạo nổi bật) */}
+              {remainingCoords.length > 1 && (
+                <Polyline
+                  positions={remainingCoords}
+                  color={activeColor}
+                  weight={6}
+                  opacity={0.95}
+                  lineCap="round"
+                  lineJoin="round"
+                />
+              )}
+
+              {/* Nối nét đứt từ điểm cuối lộ trình tới đích thực tế */}
+              {destLoc && remainingCoords.length > 0 && (
+                <Polyline
+                  positions={[
+                    remainingCoords[remainingCoords.length - 1],
+                    [destLoc.lat, destLoc.lng],
+                  ]}
+                  color="#3b82f6"
+                  weight={4}
+                  dashArray="6, 6"
+                  opacity={0.8}
+                />
+              )}
+            </div>
+          );
+        } else {
+          // Lộ trình phụ: vẽ mờ nét đứt để người dân click chọn thay đổi
+          return (
             <Polyline
-              positions={[
-                routeCoords[routeCoords.length - 1],
-                [destLoc.lat, destLoc.lng],
-              ]}
-              color="#3b82f6" // Xanh dương cho đoạn kết nối Đích
+              key={`alt-route-${idx}`}
+              positions={coords}
+              color="#94a3b8"
               weight={4}
-              dashArray="8, 8"
-              opacity={0.8}
+              opacity={0.45}
+              dashArray="5, 5"
+              lineCap="round"
+              lineJoin="round"
+              eventHandlers={{
+                click: () => {
+                  if (onSelectRouteIndex) {
+                    onSelectRouteIndex(idx);
+                  }
+                },
+              }}
             />
-          )}
-        </>
-      )}
+          );
+        }
+      })}
 
       {/* Các đoạn đường bị chặn cản trở gần đó */}
       {blockedSegments && blockedSegments.map((seg: any, idx: number) => (
         <Polyline
           key={idx}
           positions={seg.coords}
-          color={seg.level === 'DANGER' ? '#ef4444' : '#f97316'} // Đỏ cho DANGER, Cam cho WARNING
+          color={seg.level === 'DANGER' ? '#ef4444' : '#f97316'}
           weight={5}
           dashArray="6, 6"
           opacity={0.8}

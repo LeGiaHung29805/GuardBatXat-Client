@@ -79,7 +79,7 @@ export default function RescueNavigation() {
         let initialStartPos: [number, number] = [21.067849, 105.804642];
 
         if (found) {
-          setMission({
+          const missionData = {
             id: String(found.id),
             requesterName: found.senderName || 'Người dân',
             location: {
@@ -91,8 +91,24 @@ export default function RescueNavigation() {
             phoneNumber: found.senderPhone,
             peopleCount: found.totalPeople || 1,
             description: found.message || '',
-            priority: 'high', // Mặc định là High vì backend chưa có trường priority
-          });
+            priority: 'high' as const,
+          };
+          
+          setMission(missionData);
+
+          // Lấy vị trí định vị GPS thực tế của đội cứu hộ
+          if (typeof navigator !== 'undefined' && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const currentGpsPos: [number, number] = [position.coords.latitude, position.coords.longitude];
+                setMission((prev) => prev ? { ...prev, startPos: currentGpsPos } : null);
+              },
+              (error) => {
+                console.warn("Không lấy được GPS hiện tại của đội cứu hộ, dùng vị trí mặc định:", error);
+              },
+              { enableHighAccuracy: true, timeout: 5000 }
+            );
+          }
         } else {
           router.push('/rescue');
           return;
@@ -134,12 +150,14 @@ export default function RescueNavigation() {
     // Tối ưu UI: Cập nhật state ngay lập tức
     setUpdates([initialUpdate]);
     
+    const activeStartPos = mission?.startPos || DEFAULT_START_POS;
+
     try {
       await ApiClient.sendSosFieldUpdate(missionId, {
         status: initialUpdate.status,
         message: initialUpdate.message,
-        lat: DEFAULT_START_POS[0],
-        lng: DEFAULT_START_POS[1],
+        lat: activeStartPos[0],
+        lng: activeStartPos[1],
         images: []
       });
     } catch (e) {
@@ -188,11 +206,14 @@ export default function RescueNavigation() {
       timestamp: new Date(),
     };
     setUpdates([initialUpdate]);
+
+    const activeStartPos = mission?.startPos || DEFAULT_START_POS;
+
     ApiClient.sendSosFieldUpdate(missionId, {
       status: initialUpdate.status,
       message: initialUpdate.message,
-      lat: DEFAULT_START_POS[0],
-      lng: DEFAULT_START_POS[1],
+      lat: activeStartPos[0],
+      lng: activeStartPos[1],
       images: []
     }).catch(console.error);
   };
@@ -210,6 +231,16 @@ export default function RescueNavigation() {
       localStorage.setItem(`rescue:route:${missionId}`, JSON.stringify(trackingData));
       localStorage.setItem(`rescue:latest-tracking-update`, JSON.stringify({ missionId, ...trackingData, timestamp: new Date().toISOString() }));
       window.dispatchEvent(new CustomEvent('rescue-tracking-update', { detail: { missionId, ...trackingData } }));
+
+      // Gửi live location thực tế lên máy chủ để nạn nhân nhận realtime qua WebSocket
+      ApiClient.updateLiveLocation({
+        entityId: missionId,
+        lat: sample.lat,
+        lng: sample.lng,
+        role: "RESCUE_TEAM",
+        remainingKm: sample.remainingKm,
+        message: `Đội cứu hộ đang di chuyển: còn ${sample.remainingKm} km`
+      }).catch((err) => console.error("Lỗi gửi Live Location mô phỏng:", err));
     }
   };
 

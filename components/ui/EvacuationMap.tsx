@@ -115,63 +115,69 @@ function MapController({
     userLocation,
     rescueRoutePositions,
     rescueTrackingPath,
+    mapMode,
 }: {
     selectedOption: any;
     userLocation: { lat: number; lng: number } | null;
     rescueRoutePositions: [number, number][];
     rescueTrackingPath: LatLngPoint[];
+    mapMode: 'evacuation' | 'rescue';
 }) {
     const map = useMap();
     const lastFitKeyRef = useRef<string | null>(null);
 
     useEffect(() => {
-        if (rescueRoutePositions.length > 1) {
-            const first = rescueRoutePositions[0];
-            const last = rescueRoutePositions[rescueRoutePositions.length - 1];
-            const fitKey = `rescue:${rescueRoutePositions.length}:${first.join(',')}:${last.join(',')}`;
-            if (lastFitKeyRef.current === fitKey) return;
+        if (mapMode === 'rescue') {
+            if (rescueRoutePositions.length > 1) {
+                const first = rescueRoutePositions[0];
+                const last = rescueRoutePositions[rescueRoutePositions.length - 1];
+                const fitKey = `rescue:${rescueRoutePositions.length}:${first.join(',')}:${last.join(',')}`;
+                if (lastFitKeyRef.current === fitKey) return;
 
-            map.fitBounds(L.latLngBounds(rescueRoutePositions), { padding: [70, 70], animate: true, duration: 1 });
-            lastFitKeyRef.current = fitKey;
-            return;
+                map.fitBounds(L.latLngBounds(rescueRoutePositions), { padding: [70, 70], animate: true, duration: 1 });
+                lastFitKeyRef.current = fitKey;
+                return;
+            }
+
+            if (userLocation && rescueTrackingPath.length > 1) {
+                const pathCoords = rescueTrackingPath.map((point) => [point.lat, point.lng] as [number, number]);
+                const first = pathCoords[0];
+                const last = pathCoords[pathCoords.length - 1];
+                const fitKey = `tracking:${pathCoords.length}:${first.join(',')}:${last.join(',')}`;
+                if (lastFitKeyRef.current === fitKey) return;
+
+                map.fitBounds(L.latLngBounds([[userLocation.lat, userLocation.lng], ...pathCoords]), {
+                    padding: [70, 70],
+                    animate: true,
+                    duration: 1,
+                });
+                lastFitKeyRef.current = fitKey;
+                return;
+            }
         }
 
-        if (selectedOption?.route_coordinates?.length > 0) {
-            const routeCoords = selectedOption.route_coordinates.map((coord: number[]) => [coord[0], coord[1]] as [number, number]);
-            const first = routeCoords[0];
-            const last = routeCoords[routeCoords.length - 1];
-            const fitKey = `shelter:${selectedOption.destination?.id ?? 'route'}:${routeCoords.length}:${first.join(',')}:${last.join(',')}`;
-            if (lastFitKeyRef.current === fitKey) return;
+        if (mapMode === 'evacuation') {
+            if (selectedOption?.route_coordinates?.length > 0) {
+                const routeCoords = selectedOption.route_coordinates.map((coord: number[]) => [coord[0], coord[1]] as [number, number]);
+                const first = routeCoords[0];
+                const last = routeCoords[routeCoords.length - 1];
+                const fitKey = `shelter:${selectedOption.destination?.id ?? 'route'}:${routeCoords.length}:${first.join(',')}:${last.join(',')}`;
+                if (lastFitKeyRef.current === fitKey) return;
 
-            map.fitBounds(L.latLngBounds(routeCoords), { padding: [50, 50], animate: true, duration: 1 });
-            lastFitKeyRef.current = fitKey;
-            return;
+                map.fitBounds(L.latLngBounds(routeCoords), { padding: [50, 50], animate: true, duration: 1 });
+                lastFitKeyRef.current = fitKey;
+                return;
+            }
+
+            if (userLocation) {
+                const fitKey = `user:${userLocation.lat}:${userLocation.lng}`;
+                if (lastFitKeyRef.current === fitKey) return;
+
+                map.setView([userLocation.lat, userLocation.lng], 16, { animate: true });
+                lastFitKeyRef.current = fitKey;
+            }
         }
-
-        if (userLocation && rescueTrackingPath.length > 1) {
-            const pathCoords = rescueTrackingPath.map((point) => [point.lat, point.lng] as [number, number]);
-            const first = pathCoords[0];
-            const last = pathCoords[pathCoords.length - 1];
-            const fitKey = `tracking:${pathCoords.length}:${first.join(',')}:${last.join(',')}`;
-            if (lastFitKeyRef.current === fitKey) return;
-
-            map.fitBounds(L.latLngBounds([[userLocation.lat, userLocation.lng], ...pathCoords]), {
-                padding: [70, 70],
-                animate: true,
-                duration: 1,
-            });
-            lastFitKeyRef.current = fitKey;
-            return;
-        }
-
-        if (userLocation) {
-            const fitKey = `user:${userLocation.lat}:${userLocation.lng}`;
-            if (lastFitKeyRef.current === fitKey) return;
-
-            map.setView([userLocation.lat, userLocation.lng], 16, { animate: true });
-            lastFitKeyRef.current = fitKey;
-        }
-    }, [selectedOption, userLocation, rescueRoutePositions, rescueTrackingPath, map]);
+    }, [selectedOption, userLocation, rescueRoutePositions, rescueTrackingPath, map, mapMode]);
 
     return null;
 }
@@ -183,6 +189,7 @@ export default function EvacuationMap({
     rescueTracking,
     rescueTrackingPath = [],
     rescueRoute,
+    mapMode = 'evacuation',
 }: {
     userLocation: { lat: number; lng: number } | null;
     options: any[];
@@ -190,6 +197,7 @@ export default function EvacuationMap({
     rescueTracking?: RescueTrackingUpdate | null;
     rescueTrackingPath?: LatLngPoint[];
     rescueRoute?: RescueRouteData | null;
+    mapMode?: 'evacuation' | 'rescue';
 }) {
     const selectedOption = options?.length > 0 ? options[selectedIndex] : null;
     const rescuePosition: RescueMapPosition | null = rescueTracking &&
@@ -237,73 +245,103 @@ export default function EvacuationMap({
                 zoom={15}
                 className="z-0 h-full w-full"
             >
-                <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    attribution="&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
-                />
-                <TileLayer
-                    url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png"
-                    attribution="Map tiles by Stamen Design"
-                />
-
                 <MapController
                     selectedOption={selectedOption}
                     userLocation={userLocation}
                     rescueRoutePositions={rescueRoutePositions}
                     rescueTrackingPath={rescueTrackingPath}
+                    mapMode={mapMode}
+                />
+                <TileLayer
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    attribution="&copy; Esri"
+                />
+                <TileLayer
+                    url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png"
+                    attribution="Tiles by Stamen"
                 />
 
-                {!rescueRoute && userLocation && (
+                {userLocation && (
                     <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
                         <Popup>Vị trí của bạn</Popup>
                     </Marker>
                 )}
 
-                {selectedOption?.route_coordinates?.length > 0 && (
-                    <>
-                        {userLocation && (
-                            <Polyline
-                                positions={[
-                                    [userLocation.lat, userLocation.lng],
-                                    selectedOption.route_coordinates[0],
-                                ]}
-                                color="#fde047"
-                                weight={4}
-                                dashArray="8, 8"
-                                opacity={0.8}
-                            />
-                        )}
-                        <Polyline
-                            positions={selectedOption.route_coordinates}
-                            color="#fde047"
-                            weight={6}
-                            opacity={0.9}
-                            lineCap="round"
-                            lineJoin="round"
-                        />
-                        <Polyline
-                            positions={[
-                                selectedOption.route_coordinates[selectedOption.route_coordinates.length - 1],
-                                [selectedOption.destination.lat, selectedOption.destination.lng],
-                            ]}
-                            color="#fde047"
-                            weight={4}
-                            dashArray="8, 8"
-                            opacity={0.8}
-                        />
-                        <Marker position={[selectedOption.destination.lat, selectedOption.destination.lng]} icon={shelterIcon}>
-                            <Popup>
-                                <div className="p-1 text-center">
-                                    <strong className="mb-1 block text-base text-red-600">{selectedOption.destination.name}</strong>
-                                    Sức chứa: <b className="text-green-600">{selectedOption.destination.available_capacity || (selectedOption.destination.max_capacity - selectedOption.destination.current_occupancy)} / {selectedOption.destination.max_capacity}</b> người<br />
-                                    Tình trạng: <span className="font-semibold text-green-600">An toàn</span>
-                                </div>
-                            </Popup>
-                        </Marker>
-                    </>
-                )}
+                {mapMode === 'evacuation' && selectedOption?.route_coordinates?.length > 0 && (() => {
+                    const coords = selectedOption.route_coordinates;
+                    let closestIdx = 0;
+                    if (userLocation) {
+                        closestIdx = findClosestIndex(coords, [userLocation.lat, userLocation.lng]);
+                    }
 
-                {displayedRescueRoute.length > 1 && (
+                    const traversedCoords = coords.slice(0, closestIdx + 1);
+                    const remainingCoords = coords.slice(closestIdx);
+
+                    return (
+                        <>
+                            {userLocation && remainingCoords.length > 0 && (
+                                <Polyline
+                                    positions={[
+                                        [userLocation.lat, userLocation.lng],
+                                        remainingCoords[0],
+                                    ]}
+                                    color="#fde047"
+                                    weight={4}
+                                    dashArray="8, 8"
+                                    opacity={0.8}
+                                />
+                            )}
+                            
+                            {/* Đoạn đã đi qua (Xám mờ) */}
+                            {traversedCoords.length > 1 && (
+                                <Polyline
+                                    positions={traversedCoords}
+                                    color="#64748b"
+                                    weight={4}
+                                    opacity={0.4}
+                                    lineCap="round"
+                                    lineJoin="round"
+                                />
+                            )}
+
+                            {/* Đoạn còn lại cần đi tiếp (Vàng nổi bật) */}
+                            {remainingCoords.length > 1 && (
+                                <Polyline
+                                    positions={remainingCoords}
+                                    color="#fde047"
+                                    weight={6}
+                                    opacity={0.95}
+                                    lineCap="round"
+                                    lineJoin="round"
+                                />
+                            )}
+
+                            {remainingCoords.length > 0 && (
+                                <Polyline
+                                    positions={[
+                                        remainingCoords[remainingCoords.length - 1],
+                                        [selectedOption.destination.lat, selectedOption.destination.lng],
+                                    ]}
+                                    color="#fde047"
+                                    weight={4}
+                                    dashArray="8, 8"
+                                    opacity={0.8}
+                                />
+                            )}
+                            <Marker position={[selectedOption.destination.lat, selectedOption.destination.lng]} icon={shelterIcon}>
+                                <Popup>
+                                    <div className="p-1 text-center">
+                                        <strong className="mb-1 block text-base text-red-600">{selectedOption.destination.name}</strong>
+                                        Sức chứa: <b className="text-green-600">{selectedOption.destination.available_capacity || (selectedOption.destination.max_capacity - selectedOption.destination.current_occupancy)} / {selectedOption.destination.max_capacity}</b> người<br />
+                                        Tình trạng: <span className="font-semibold text-green-600">An toàn</span>
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        </>
+                    );
+                })()}
+
+                {mapMode === 'rescue' && displayedRescueRoute.length > 1 && (
                     <>
                         <Polyline
                             positions={displayedRescueRoute}
@@ -324,7 +362,7 @@ export default function EvacuationMap({
                     </>
                 )}
 
-                {rescueMarkerPosition && (
+                {mapMode === 'rescue' && rescueMarkerPosition && (
                     <Marker position={rescueMarkerPosition} icon={rescueStartIcon}>
                         <Popup>
                             <div className="min-w-40 p-1">
@@ -340,7 +378,7 @@ export default function EvacuationMap({
                     </Marker>
                 )}
 
-                {sosPosition && (rescueRoute || rescuePosition) && (
+                {mapMode === 'rescue' && sosPosition && (rescueRoute || rescuePosition) && (
                     <Marker position={sosPosition} icon={rescueSosIcon}>
                         <Popup>
                             <div className="p-1 text-center">

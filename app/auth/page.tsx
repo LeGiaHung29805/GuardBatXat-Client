@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiClient, setAuthToken } from "@/lib/ApiClient"; // QUAN TRỌNG: Import setAuthToken
+import Link from "next/link";
 
 export default function AuthPage() {
     const router = useRouter();
@@ -37,8 +38,12 @@ export default function AuthPage() {
                 });
 
                 const token = res.data;
+                if (!token) {
+                    throw new Error("Không nhận được token từ máy chủ.");
+                }
 
                 localStorage.setItem("jwt_token", token);
+                localStorage.setItem("token", token);
 
                 setAuthToken(token);
 
@@ -49,12 +54,15 @@ export default function AuthPage() {
                     router.push("/rescue");
                 } else if (roleName === "ADMIN") {
                     router.push("/admin");
+                } else if (roleName === "COMMANDER") {
+                    router.push("/commander");
                 } else {
                     router.push("/citizen/evacuation");
                 }
 
             } else {
                 await ApiClient.register({
+                    username: formData.emailOrPhone,
                     emailOrPhone: formData.emailOrPhone,
                     password: formData.password,
                     fullName: formData.fullName,
@@ -152,11 +160,26 @@ export default function AuthPage() {
                             setIsLoginMode(!isLoginMode);
                             setErrorMsg("");
                             setSuccessMsg("");
+                            setFormData({
+                                identifier: "",
+                                emailOrPhone: "",
+                                password: "",
+                                fullName: "",
+                            });
                         }}
                         className="text-emerald-400 hover:underline focus:outline-none font-medium"
                     >
                         {isLoginMode ? "Đăng ký ngay" : "Đăng nhập tại đây"}
                     </button>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-slate-700/50 text-center">
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 text-slate-400 hover:text-emerald-400 text-sm transition-all font-medium focus:outline-none"
+                    >
+                        <span>←</span> Quay lại trang chủ
+                    </Link>
                 </div>
             </div>
         </div>

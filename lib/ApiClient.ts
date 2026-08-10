@@ -179,9 +179,12 @@ axiosInstance.interceptors.response.use(
         localStorage.removeItem("jwt_token");
         localStorage.removeItem("token");
         setAuthToken(null);
+        // Chuyển hướng về trang đăng nhập nếu đang truy cập các đường dẫn đặc quyền cần bảo vệ
+        const pathname = window.location.pathname;
+        const protectedPaths = ["/admin", "/commander", "/rescue", "/citizen/profile"];
+        const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
-        // Chuyển hướng về trang đăng nhập nếu cần
-        if (window.location.pathname !== "/auth") {
+        if (isProtected && pathname !== "/auth") {
           window.location.href = "/auth";
         }
       }
@@ -279,6 +282,12 @@ export const ApiClient = {
     const response = await axiosInstance.post("/v1/routing/safe-route", data);
     return response.data;
   },
+  compareSafetyRoutes: async (
+    data: any,
+  ): Promise<ApiResponse<{ routes: { pathPoints: [number, number][]; totalDistance: number }[] }>> => {
+    const response = await axiosInstance.post("/v1/routing/compare-safety", data);
+    return response.data;
+  },
 
   findSafeShelters: async (
     data: SafeShelterRequest,
@@ -289,8 +298,12 @@ export const ApiClient = {
     );
     return response.data;
   },
-  sendSosAlert: async (data: SosRequest): Promise<ApiResponse<string>> => {
+  sendSosAlert: async (data: SosRequest): Promise<ApiResponse<any>> => {
     const response = await axiosInstance.post("/v1/sos/send", data);
+    return response.data;
+  },
+  updateLiveLocation: async (data: { entityId: string | number; lat: number; lng: number; role?: string; remainingKm?: number; message?: string }): Promise<ApiResponse<string>> => {
+    const response = await axiosInstance.post("/v1/sos/live-location", data);
     return response.data;
   },
   getEvacuationRoute: async (data: any) => {

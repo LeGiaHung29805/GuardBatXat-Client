@@ -205,9 +205,9 @@ export default function RescueDashboard() {
       setPendingMissions((prev) => prev.filter((m) => m.id !== mission.id));
       setActiveMissions((prev) => [...prev, { ...mission, status: 'accepted' }]);
       showToast('info', 'Nhận nhiệm vụ', `Đã nhận nhiệm vụ ${mission.id} - ${mission.requesterName}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      showToast('danger', 'Lỗi', 'Lỗi nhận nhiệm vụ');
+      showToast('danger', 'Lỗi', error.message || 'Lỗi nhận nhiệm vụ');
     }
   };
 
@@ -223,9 +223,9 @@ export default function RescueDashboard() {
       setActiveMissions((prev) => prev.filter((m) => m.id !== mission.id));
       setCompletedMissions((prev) => [...prev, { ...mission, status: 'completed' }]);
       showToast('info', 'Hoàn thành', `Hoàn thành nhiệm vụ ${mission.id} - ${mission.requesterName}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      showToast('danger', 'Lỗi', 'Lỗi hoàn thành nhiệm vụ');
+      showToast('danger', 'Lỗi', error.message || 'Lỗi hoàn thành nhiệm vụ');
     }
   };
 
