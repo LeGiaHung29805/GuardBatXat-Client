@@ -1,6 +1,6 @@
 "use client";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { ApiClient } from "@/lib/ApiClient";
 import {
   Plus,
@@ -20,19 +20,24 @@ export default function AdminBuildingsPage() {
   // --- STATE PHÂN TRANG ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20; // Giới hạn 50 dòng/trang để DOM không bị treo
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     let isMounted = true; // Chống Memory Leak khi unmount component
 
     const fetchBuildings = async () => {
       try {
-        const res = await ApiClient.getAdminBuildings();
+        setLoading(true);
+        const res = await ApiClient.getAdminBuildings(
+          currentPage - 1,
+          itemsPerPage,
+          debouncedSearchTerm.trim(),
+        );
         if (isMounted && res.code === 200) {
-          // Xử lý an toàn nếu Backend trả về GeoJSON FeatureCollection
-          const dataArray = Array.isArray(res.data)
-            ? res.data
-            : res.data?.features || [];
-          setBuildings(dataArray);
+          setBuildings(Array.isArray(res.data?.content) ? res.data.content : []);
+          setTotalElements(Number(res.data?.totalElements || 0));
+          setTotalPages(Number(res.data?.totalPages || 0));
         }
       } catch (error) {
         console.error("Lỗi lấy dữ liệu nhà cửa:", error);
@@ -45,28 +50,11 @@ export default function AdminBuildingsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentPage, debouncedSearchTerm]);
 
-  // --- TỐI ƯU TÌM KIẾM CỰC ĐẠI ---
-  const filteredBuildings = useMemo(() => {
-    if (!debouncedSearchTerm || !debouncedSearchTerm.trim()) return buildings; // Ngắt vòng lặp nếu ô tìm kiếm rỗng
-
-    const term = debouncedSearchTerm.toLowerCase().trim();
-    return buildings.filter(
-      (b: any) =>
-        b.id?.toString().includes(term) ||
-        (b.buildingType || b.buildingtype || "")?.toLowerCase().includes(term),
-    );
-  }, [buildings, debouncedSearchTerm]);
-
-  // --- LOGIC CẮT TRANG ---
-  const totalPages = Math.ceil(filteredBuildings.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredBuildings.slice(
-    indexOfFirstItem,
-    indexOfLastItem,
-  );
+  const currentItems = buildings;
 
   // Reset về trang 1 khi gõ tìm kiếm mới
   const handleSearch = (e: any) => {
@@ -82,7 +70,7 @@ export default function AdminBuildingsPage() {
             Quản lý Nhà cửa
           </h2>
           <p className="text-slate-500">
-            Dữ liệu hạ tầng GIS huyện Bát Xát ({buildings.length} công trình)
+            Dữ liệu hạ tầng GIS huyện Bát Xát ({totalElements} công trình)
           </p>
         </div>
         <button className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-100 w-full md:w-auto justify-center">
@@ -239,12 +227,12 @@ export default function AdminBuildingsPage() {
         </div>
 
         {/* --- KHỐI ĐIỀU KHIỂN PHÂN TRANG --- */}
-        {!loading && filteredBuildings.length > 0 && (
+        {!loading && totalElements > 0 && (
           <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-4">
             <span className="text-xs font-bold text-slate-500">
               Hiển thị {indexOfFirstItem + 1} -{" "}
-              {Math.min(indexOfLastItem, filteredBuildings.length)} trong số{" "}
-              {filteredBuildings.length} bản ghi
+              {Math.min(indexOfLastItem, totalElements)} trong số{" "}
+              {totalElements} bản ghi
             </span>
             <div className="flex items-center gap-2">
               <button

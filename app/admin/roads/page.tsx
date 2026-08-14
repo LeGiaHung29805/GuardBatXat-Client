@@ -1,6 +1,6 @@
 "use client";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { ApiClient } from "@/lib/ApiClient";
 import {
   Plus,
@@ -19,19 +19,24 @@ export default function AdminRoadsPage() {
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20; // Render đúng 50 dòng để nhẹ DOM
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     let isMounted = true; // Chống Memory Leak
 
     const fetchRoads = async () => {
       try {
-        const res = await ApiClient.getAdminRoads();
+        setLoading(true);
+        const res = await ApiClient.getAdminRoads(
+          currentPage - 1,
+          itemsPerPage,
+          debouncedSearchTerm.trim(),
+        );
         if (isMounted && res.code === 200) {
-          // Phòng hờ Backend trả về GeoJSON FeatureCollection thay vì Array thuần
-          const dataArray = Array.isArray(res.data)
-            ? res.data
-            : res.data?.features || [];
-          setRoads(dataArray);
+          setRoads(Array.isArray(res.data?.content) ? res.data.content : []);
+          setTotalElements(Number(res.data?.totalElements || 0));
+          setTotalPages(Number(res.data?.totalPages || 0));
         }
       } catch (error) {
         console.error("Lỗi lấy dữ liệu mạng lưới đường:", error);
@@ -44,28 +49,11 @@ export default function AdminRoadsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentPage, debouncedSearchTerm]);
 
-  // TỐI ƯU HÓA CỰC ĐẠI: Cắt đứt vòng lặp nếu không gõ tìm kiếm
-  const filteredRoads = useMemo(() => {
-    // Nếu không có từ khóa, trả về thẳng mảng gốc. Tránh việc duyệt qua hàng vạn phần tử!
-    if (!debouncedSearchTerm || !debouncedSearchTerm.trim()) return roads;
-
-    const term = debouncedSearchTerm.toLowerCase().trim();
-    return roads.filter(
-      (r: any) =>
-        r.id?.toString().includes(term) ||
-        r.edgeKey?.toString().includes(term) ||
-        r.u?.toString().includes(term) ||
-        r.v?.toString().includes(term),
-    );
-  }, [roads, debouncedSearchTerm]);
-
-  // LOGIC PHÂN TRANG
-  const totalPages = Math.ceil(filteredRoads.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredRoads.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = roads;
 
   const handleSearch = (e: any) => {
     setSearchTerm(e.target.value);
@@ -80,7 +68,7 @@ export default function AdminRoadsPage() {
             Mạng lưới Giao thông
           </h2>
           <p className="text-slate-500">
-            Quản lý cung chặng và trọng số di chuyển ({roads.length} đoạn đường)
+            Quản lý cung chặng và trọng số di chuyển ({totalElements} đoạn đường)
           </p>
         </div>
         <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-black transition shadow-lg">
@@ -247,12 +235,12 @@ export default function AdminRoadsPage() {
         </div>
 
         {/* KHỐI ĐIỀU KHIỂN PHÂN TRANG */}
-        {!loading && filteredRoads.length > 0 && (
+        {!loading && totalElements > 0 && (
           <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col md:flex-row items-center justify-between gap-4">
             <span className="text-xs font-bold text-slate-500">
               Hiển thị {indexOfFirstItem + 1} -{" "}
-              {Math.min(indexOfLastItem, filteredRoads.length)} trong số{" "}
-              {filteredRoads.length} bản ghi
+              {Math.min(indexOfLastItem, totalElements)} trong số{" "}
+              {totalElements} bản ghi
             </span>
             <div className="flex items-center gap-2">
               <button

@@ -379,12 +379,16 @@ export const ApiClient = {
   // ==========================================
   // --- ADMIN SPATIAL (Hạ tầng) ---
   // ==========================================
-  getAdminBuildings: async () => {
-    const response = await axiosInstance.get("/admin/spatial/buildings");
+  getAdminBuildings: async (page = 0, size = 20, search = "") => {
+    const response = await axiosInstance.get("/admin/spatial/buildings", {
+      params: { page, size, search },
+    });
     return response.data;
   },
-  getAdminRoads: async () => {
-    const response = await axiosInstance.get("/admin/spatial/roads");
+  getAdminRoads: async (page = 0, size = 20, search = "") => {
+    const response = await axiosInstance.get("/admin/spatial/roads", {
+      params: { page, size, search },
+    });
     return response.data;
   },
   createBuilding: async (data: any) => {
