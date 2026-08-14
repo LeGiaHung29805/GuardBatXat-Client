@@ -21,6 +21,7 @@ import {
 export default function SimulationPage() {
   const [waterLevel, setWaterLevel] = useState("83.5");
   const [simData, setSimData] = useState<any[]>([]);
+  const [simulationId, setSimulationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // --- Logic Phân trang ---
@@ -64,15 +65,18 @@ export default function SimulationPage() {
       );
 
       if (res?.code === 200) {
-        setSimData(Array.isArray(res?.data) ? res.data : []);
+        setSimulationId(res?.data?.simulationId || null);
+        setSimData(Array.isArray(res?.data?.results) ? res.data.results : []);
         setCurrentPage(1);
       } else {
         alert(res?.message || "Có lỗi xảy ra khi chạy giả lập.");
         setSimData([]);
+        setSimulationId(null);
       }
     } catch (e: any) {
       alert(e?.message || "Lỗi kết nối hoặc xử lý giả lập");
       setSimData([]);
+      setSimulationId(null);
     }
     setLoading(false);
   };
@@ -190,6 +194,11 @@ export default function SimulationPage() {
               <span className="text-[10px] font-black text-slate-400 bg-white px-3 py-1 rounded-full border uppercase">
                 Trang {currentPage} / {totalPages}
               </span>
+              {simulationId && (
+                <span className="text-[10px] font-mono text-slate-500">
+                  ID: {simulationId}
+                </span>
+              )}
             </div>
 
             {/* Max-height 450px để bảng dài thoải mái nhưng không phá layout */}
