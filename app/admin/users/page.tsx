@@ -507,10 +507,11 @@ export default function AdminUserPage() {
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium"
                   >
                     <option value="ADMIN">ADMIN (Quản trị viên)</option>
+                    <option value="CITIZEN">CITIZEN (Người dân)</option>
                     <option value="RESCUE_TEAM">
                       RESCUE_TEAM (Đội cứu hộ)
                     </option>
-                    <option value="VIEWER">VIEWER (Người xem)</option>
+                    <option value="COMMANDER">COMMANDER (Trung tâm chỉ huy)</option>
                   </select>
                 </div>
                 <div>
