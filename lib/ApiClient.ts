@@ -223,6 +223,10 @@ export const ApiClient = {
     const response = await axiosInstance.post("/v1/auth/login", data);
     return response.data;
   },
+  demoLogin: async (token: string): Promise<ApiResponse<string>> => {
+    const response = await axiosInstance.post("/v1/auth/demo-login", { token });
+    return response.data;
+  },
   register: async (data: any): Promise<ApiResponse<any>> => {
     const response = await axiosInstance.post("/v1/auth/register", data);
     return response.data;
@@ -373,6 +377,34 @@ export const ApiClient = {
   },
   deleteUser: async (id: number) => {
     const response = await axiosInstance.delete(`/admin/users/${id}`);
+    return response.data;
+  },
+  createDemoInvite: async (identifier: string, ttlMinutes: number) => {
+    const response = await axiosInstance.post("/admin/demo-invites", {
+      identifier,
+      ttlMinutes,
+    });
+    return response.data;
+  },
+  getMyDemoLocation: async () => {
+    const response = await axiosInstance.get("/v1/users/me/demo-location");
+    return response.data;
+  },
+  getAdminDemoLocation: async (userId: number) => {
+    const response = await axiosInstance.get(
+      `/admin/users/${userId}/demo-location`,
+    );
+    return response.data;
+  },
+  assignAdminDemoLocation: async (
+    userId: number,
+    latitude: number,
+    longitude: number,
+  ) => {
+    const response = await axiosInstance.put(
+      `/admin/users/${userId}/demo-location`,
+      { latitude, longitude },
+    );
     return response.data;
   },
 

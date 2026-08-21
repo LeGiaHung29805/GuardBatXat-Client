@@ -8,7 +8,8 @@ const nextConfig: NextConfig = {
     "localhost",
     "192.168.102.21",
     "127.0.0.1",
-    "playmate-chess-overbuilt.ngrok-free.dev",
+    "*.ngrok-free.app",
+    "*.ngrok-free.dev",
   ],
 
   async rewrites() {
