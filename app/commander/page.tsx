@@ -264,14 +264,14 @@ export default function PCTTCommanderDashboard() {
 
   if (!authorized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
+      <div className="flex min-h-dvh items-center justify-center bg-slate-950 text-slate-200">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 text-white relative">
+    <div className="relative min-h-dvh bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 text-white">
       <ToastContainer />
 
       {loading && (
