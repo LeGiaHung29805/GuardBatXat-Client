@@ -265,7 +265,7 @@ export default function RescueNavigation() {
 
   if (!mounted || !mission) {
     return (
-      <div className="flex justify-center items-center h-screen bg-slate-950">
+      <div className="flex h-dvh items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin rounded-full h-10 w-10 border-2 border-cyan-500 border-t-transparent shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
           <p className="text-sm text-cyan-400 animate-pulse tracking-widest uppercase font-semibold">Đang đồng bộ dữ liệu vệ tinh...</p>
@@ -280,7 +280,7 @@ export default function RescueNavigation() {
   const priority = priorityConfig[mission.priority] ?? priorityConfig.medium;
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 font-sans selection:bg-cyan-500/30">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-slate-950 font-sans selection:bg-cyan-500/30">
       {/* Header */}
       <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
         <button
