@@ -7,6 +7,7 @@ import { EvacuationOption } from '@/lib/Model';
 import ToastContainer, { showToast } from '@/components/ui/Toast';
 import { getDistanceToPolyline } from '@/lib/utils';
 import { ChevronUp, ChevronDown } from 'lucide-react';
+import { isDemoQrSession, watchEffectiveLocation } from '@/lib/effectiveLocation';
 
 const EvacuationMap = dynamic(() => import('@/components/ui/EvacuationMap'), { ssr: false });
 
@@ -135,15 +136,13 @@ export default function EvacuationPage() {
     const hasAttemptedFetch = useRef(false);
 
     useEffect(() => {
-        let watchId: number;
-        if ("geolocation" in navigator) {
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    let lat = pos.coords.latitude;
-                    let lng = pos.coords.longitude;
+        const stopWatching = watchEffectiveLocation(
+                (location) => {
+                    let lat = location.lat;
+                    let lng = location.lng;
                     
                     // Giả lập đưa về Bát Xát nếu thiết bị đang test ở địa phương khác
-                    if (lat < 22.0 || lat > 23.0 || lng < 103.0 || lng > 105.0) {
+                    if (location.source === 'DEVICE_GPS' && (lat < 22.0 || lat > 23.0 || lng < 103.0 || lng > 105.0)) {
                         lat = 22.6105; 
                         lng = 103.8012;
                     }
@@ -153,21 +152,17 @@ export default function EvacuationPage() {
                         return { lat, lng };
                     });
                 },
-                () => {
+                (error) => {
+                    if (isDemoQrSession()) {
+                        showToast('danger', 'VỊ TRÍ TRÌNH DIỄN', error.message);
+                        return;
+                    }
                     showToast('warning', 'ĐỊNH VỊ GPS', 'Không thể tự động lấy vị trí. Đã dùng UBND huyện Bát Xát làm mặc định.');
                     setUserLocation(prev => prev || { lat: 22.6105, lng: 103.8012 });
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
-        } else {
-            showToast('danger', 'HỖ TRỢ GPS', 'Trình duyệt không hỗ trợ định vị GPS. Đã dùng UBND huyện Bát Xát làm mặc định.');
-            setUserLocation(prev => prev || { lat: 22.6105, lng: 103.8012 });
-        }
-        return () => {
-            if (watchId) {
-                navigator.geolocation.clearWatch(watchId);
-            }
-        };
+        return stopWatching;
     }, []);
 
     // Tự động tìm kiếm điểm trú ẩn an toàn nhất khi có tọa độ vị trí (GPS hoặc mặc định)
@@ -276,7 +271,7 @@ export default function EvacuationPage() {
             </div>
 
             {/* Desktop: Sidebar trái cố định */}
-            <div className="hidden md:flex absolute top-0 left-0 h-full w-96 p-6 bg-slate-900/95 backdrop-blur border-r border-slate-800 z-10 flex-col overflow-y-auto shadow-2xl">
+            <div className="absolute top-0 left-0 z-10 hidden h-full min-h-0 w-96 flex-col overflow-hidden border-r border-slate-800 bg-slate-900/95 p-6 shadow-2xl backdrop-blur md:flex">
                 <div className="space-y-1 mb-4">
                     <h1 className="text-2xl font-black text-red-500 flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
@@ -287,7 +282,7 @@ export default function EvacuationPage() {
                 <button onClick={handleFindShelter} disabled={loading || !userLocation} className="w-full py-3 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-extrabold rounded-xl mb-4 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg active:scale-95">
                     {loading ? 'Đang dò quét Radar...' : (!userLocation ? 'Đang dò GPS...' : 'TÌM ĐIỂM SƠ TÁN NGAY')}
                 </button>
-                <div className="flex-1 flex flex-col gap-3 overflow-y-auto"><ShelterList /></div>
+                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"><ShelterList /></div>
             </div>
 
             {/* Mobile: Bottom sheet */}

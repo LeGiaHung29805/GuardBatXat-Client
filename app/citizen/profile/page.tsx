@@ -158,15 +158,14 @@ export default function ProfilePage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="flex min-h-full items-center justify-center bg-slate-900">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
             </div>
         );
     }
 
-    // ĐÃ SỬA CSS TẠI ĐÂY: Thêm h-full, w-full, overflow-y-auto và pb-32 để giải quyết triệt để lỗi không cuộn được
     return (
-        <div className="min-h-screen h-full w-full bg-slate-900 py-12 px-4 sm:px-6 lg:px-8 text-slate-200 overflow-y-auto pb-32">
+        <div className="min-h-full w-full bg-slate-900 px-4 py-12 pb-32 text-slate-200 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto space-y-8">
 
                 <div className="text-center">

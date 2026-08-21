@@ -163,7 +163,7 @@ const RealtimeHeatmap = () => {
     if (!isMounted) return null;
 
     return (
-        <div className="relative h-screen w-full">
+        <div className="relative h-full min-h-0 w-full">
             {/* Bảng điều khiển nổi */}
             <div className="absolute left-6 top-6 z-[1000] flex flex-col gap-3 rounded-2xl bg-white/90 p-6 shadow-2xl backdrop-blur-md border border-white/20 min-w-[320px]">
                 <div className="flex items-center gap-3">
