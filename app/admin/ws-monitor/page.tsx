@@ -69,7 +69,7 @@ export default function WebSocketMonitor() {
 
     // Giao diện (Mô phỏng Dark Mode của Pusher)
     return (
-        <div className="min-h-screen bg-[#1a1b26] text-white p-8 font-sans">
+        <div className="min-h-full bg-[#1a1b26] p-8 font-sans text-white">
             <div className="max-w-6xl mx-auto">
                 <h1 className="text-3xl font-bold mb-2">GuardBátXát WebSocket Console</h1>
                 <p className="text-gray-400 mb-8 flex items-center gap-2">

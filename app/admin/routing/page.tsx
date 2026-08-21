@@ -90,8 +90,7 @@ export default function AdminRoutingPage() {
   };
 
   return (
-    // DÙNG LỚP BIÊN ÂM RESPONSIVE, h-full HOẶC h-[calc(100vh-68px)] TRÊN DI ĐỘNG ĐỂ KHÔNG BỊ TRÀN VIEWPORT
-    <div className="-m-5 sm:-m-8 md:-m-10 flex flex-col md:flex-row h-[calc(100vh-68px)] md:h-screen bg-white overflow-hidden relative">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-white md:flex-row">
       {/* 1. BẢN ĐỒ: flex-1 chiếm toàn bộ phần diện tích còn lại */}
       <div className="flex-1 h-full w-full relative z-0">
         <AdminCompareMap
