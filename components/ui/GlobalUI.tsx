@@ -8,6 +8,7 @@ import websocket from "@/app/commander/utils/websocket";
 import ToastContainer, { showToast } from "@/components/ui/Toast";
 import { Bell, BellRing, X, AlertOctagon, MapPin, Navigation } from "lucide-react";
 import { NotificationItem } from "@/lib/Model";
+import { getEffectiveLocation } from "@/lib/effectiveLocation";
 
 type RescueTrackingUpdate = {
     missionId?: string | number;
@@ -311,11 +312,11 @@ export default function GlobalUI() {
                 };
 
                 // Tính khoảng cách nếu có tọa độ trung tâm và bán kính
-                if (data.centerLat && data.centerLng && data.radius && "geolocation" in navigator) {
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                            const userLat = pos.coords.latitude;
-                            const userLng = pos.coords.longitude;
+                if (data.centerLat && data.centerLng && data.radius) {
+                    void getEffectiveLocation().then(
+                        (location) => {
+                            const userLat = location.lat;
+                            const userLng = location.lng;
 
                             const R = 6371e3;
                             const φ1 = userLat * Math.PI / 180;
@@ -336,7 +337,7 @@ export default function GlobalUI() {
                                 console.log("Bạn nằm ngoài vùng nguy hiểm. Khoảng cách: ", distance);
                             }
                         },
-                        (err) => {
+                        () => {
                             triggerLiveAlert();
                             showToast("danger", data.title || "⚠️ LỆNH TỪ BAN CHỈ HUY", data.content || "Có lệnh sơ tán khẩn cấp.");
                         }
