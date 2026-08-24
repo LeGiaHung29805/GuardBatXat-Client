@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { ApiClient } from "@/lib/ApiClient";
 import ToastContainer, { showToast } from "@/components/ui/Toast";
 import { getDistanceToPolyline } from "@/lib/utils";
+import { isDemoQrSession, watchEffectiveLocation } from "@/lib/effectiveLocation";
 
 const SafeRouteMap = dynamic(() => import("@/components/ui/SafeRouteMap"), { ssr: false });
 
@@ -57,15 +58,13 @@ export default function SafeRoutingPage() {
 
   // Theo dõi GPS thời gian thực (watchPosition) để kiểm tra lệch hướng và làm mờ đoạn đã đi qua
   useEffect(() => {
-    let watchId: number;
-    if ("geolocation" in navigator) {
-      watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          let lat = position.coords.latitude;
-          let lng = position.coords.longitude;
+    const stopWatching = watchEffectiveLocation(
+        (location) => {
+          let lat = location.lat;
+          let lng = location.lng;
           
           // Giả lập đưa về Bát Xát nếu thiết bị đang test ở địa phương khác
-          if (lat < 22.0 || lat > 23.0 || lng < 103.0 || lng > 105.0) {
+          if (location.source === "DEVICE_GPS" && (lat < 22.0 || lat > 23.0 || lng < 103.0 || lng > 105.0)) {
             lat = 22.6105; 
             lng = 103.8012;
           }
@@ -75,20 +74,17 @@ export default function SafeRoutingPage() {
             return { lat, lng };
           });
         },
-        () => {
+        (error) => {
+          if (isDemoQrSession()) {
+            showToast('danger', 'VỊ TRÍ TRÌNH DIỄN', error.message);
+            return;
+          }
           showToast('danger', 'LỖI ĐỊNH VỊ GPS', 'Không thể xác định vị trí. Đã dùng UBND huyện Bát Xát làm điểm mặc định.');
           setStartLoc(prev => prev || { lat: 22.6105, lng: 103.8012 });
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
-    } else {
-      showToast('danger', 'THIẾT BỊ KHÔNG HỖ TRỢ', 'Trình duyệt không hỗ trợ định vị GPS.');
-    }
-    return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
+    return stopWatching;
   }, []);
 
   // Tự động tái định tuyến (Auto-Rerouting) khi đi chệch khỏi tuyến đang chọn > 30m

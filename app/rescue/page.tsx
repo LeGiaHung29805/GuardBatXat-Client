@@ -255,7 +255,7 @@ export default function RescueDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-blue-500/30">
+    <div className="min-h-dvh bg-slate-950 font-sans text-slate-300 selection:bg-blue-500/30">
       <ToastContainer />
       {/* Toast */}
       {/* {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />} */}

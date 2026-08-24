@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { ApiClient } from '@/lib/ApiClient';
 import { SosRequest } from '@/lib/Model';
+import { getEffectiveLocation, isDemoQrSession } from '@/lib/effectiveLocation';
 
 export default function SosButton() {
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isProfileComplete, setIsProfileComplete] = useState(false);
 
     // Form states
     const [name, setName] = useState('');
@@ -16,6 +18,8 @@ export default function SosButton() {
     const [elderlyCount, setElderlyCount] = useState<number | ''>(0);
     const [childrenCount, setChildrenCount] = useState<number | ''>(0);
     const [message, setMessage] = useState('');
+    const [medicalNotes, setMedicalNotes] = useState('');
+    const [specialAssets, setSpecialAssets] = useState('');
 
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -37,22 +41,87 @@ export default function SosButton() {
         }
     }, []);
 
+    // Tải thông tin hồ sơ khi modal được mở và đã đăng nhập
+    useEffect(() => {
+        if (isOpen && isLoggedIn) {
+            const fetchProfile = async () => {
+                let fetchedName = '';
+                let fetchedPhone = '';
+
+                try {
+                    const basicRes = await ApiClient.getMyProfile();
+                    if (basicRes && basicRes.data) {
+                        fetchedName = basicRes.data.fullName || '';
+                        fetchedPhone = basicRes.data.phoneNumber || '';
+                        setName(fetchedName);
+                        setPhone(fetchedPhone);
+                    }
+                } catch (err) {
+                    console.error("Lỗi tải thông tin cơ bản cho SOS:", err);
+                }
+
+                try {
+                    const survivalRes = await ApiClient.getMySurvivalProfile();
+                    if (survivalRes && survivalRes.data) {
+                        const fetchedTotal = survivalRes.data.totalMembers || 1;
+                        const fetchedElderly = survivalRes.data.elderlyCount || 0;
+                        const fetchedChildren = survivalRes.data.childrenCount || 0;
+                        setTotalPeople(fetchedTotal);
+                        setElderlyCount(fetchedElderly);
+                        setChildrenCount(fetchedChildren);
+                        setMedicalNotes(survivalRes.data.medicalNotes || '');
+                        setSpecialAssets(survivalRes.data.specialAssets || '');
+                    }
+                } catch (err) {
+                    console.warn("Chưa có hồ sơ sinh tồn hoặc lỗi tải hồ sơ cho SOS:", err);
+                }
+
+                // Xác định hồ sơ đã hoàn thiện thông tin hay chưa
+                if (fetchedName.trim() && fetchedPhone.trim()) {
+                    setIsProfileComplete(true);
+                } else {
+                    setIsProfileComplete(false);
+                }
+            };
+            fetchProfile();
+        }
+    }, [isOpen, isLoggedIn]);
+
     const sendSosWithCoords = async (lat: number, lng: number, isFallback = false) => {
         try {
+            // Ghép thông tin y tế và tài sản từ hồ sơ vào tin nhắn nếu có
+            let fullMessage = message.trim();
+            if (!fullMessage) {
+                fullMessage = "Yêu cầu trợ giúp khẩn cấp!";
+            }
+
+            const details: string[] = [];
+            if (medicalNotes && medicalNotes.trim()) {
+                details.push(`Y tế/Thuốc men: ${medicalNotes.trim()}`);
+            }
+            if (specialAssets && specialAssets.trim()) {
+                details.push(`Gia tài/Tài sản đặc biệt: ${specialAssets.trim()}`);
+            }
+
+            if (details.length > 0) {
+                fullMessage = `${fullMessage}\n--- Thông tin bổ sung từ hồ sơ ---\n${details.join('\n')}`;
+            }
+
+            if (isFallback) {
+                fullMessage = `${fullMessage} (LƯU Ý: Không xác định được GPS chính xác của thiết bị, đang dùng tọa độ mặc định)`.trim();
+            }
+
             // 2. Chuẩn bị payload
             const payload: SosRequest = {
                 lat: lat,
                 lng: lng,
-                message: message + (isFallback ? " (LƯU Ý: Không xác định được GPS chính xác của thiết bị, đang dùng tọa độ mặc định)" : "")
+                message: fullMessage,
+                senderName: name,
+                senderPhone: phone,
+                totalPeople: Number(totalPeople) || 1,
+                elderlyCount: Number(elderlyCount) || 0,
+                childrenCount: Number(childrenCount) || 0
             };
-
-            if (!isLoggedIn) {
-                payload.senderName = name;
-                payload.senderPhone = phone;
-                payload.totalPeople = Number(totalPeople) || 1;
-                payload.elderlyCount = Number(elderlyCount) || 0;
-                payload.childrenCount = Number(childrenCount) || 0;
-            }
 
             // 3. Gửi dữ liệu qua API
             const result = await ApiClient.sendSosAlert(payload);
@@ -91,8 +160,12 @@ export default function SosButton() {
                         setTotalPeople(1);
                         setElderlyCount(0);
                         setChildrenCount(0);
+                        setMedicalNotes('');
+                        setSpecialAssets('');
                     } else {
                         setMessage('');
+                        setMedicalNotes('');
+                        setSpecialAssets('');
                     }
                 }, 3000);
             } else {
@@ -105,34 +178,33 @@ export default function SosButton() {
         }
     };
 
-    const handleSendSos = () => {
-        // Validate khách (Guest)
-        if (!isLoggedIn) {
-            if (!name || !phone) {
-                setStatusMsg({ type: 'error', text: 'Vui lòng nhập Họ tên và Số điện thoại!' });
-                return;
-            }
+    const handleSendSos = async () => {
+        // Validate bắt buộc có Họ tên và Số điện thoại
+        if (!name || !phone) {
+            setStatusMsg({ type: 'error', text: 'Vui lòng nhập Họ tên và Số điện thoại!' });
+            return;
         }
 
         setLoading(true);
         setStatusMsg(null);
 
-        // Lấy vị trí GPS của người dùng
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    await sendSosWithCoords(lat, lng);
-                },
-                async (error) => {
-                    console.warn("GPS failed, using fallback:", error.message);
-                    await sendSosWithCoords(22.6105, 103.8012, true);
-                },
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
-        } else {
-            sendSosWithCoords(22.6105, 103.8012, true);
+        try {
+            const location = await getEffectiveLocation({
+                enableHighAccuracy: true,
+                timeout: 5000,
+            });
+            await sendSosWithCoords(location.lat, location.lng);
+        } catch (error: any) {
+            if (isDemoQrSession()) {
+                setStatusMsg({
+                    type: 'error',
+                    text: error.message || 'Tài khoản chưa được gán ngôi nhà trình diễn.',
+                });
+                setLoading(false);
+                return;
+            }
+            console.warn("GPS failed, using fallback:", error.message);
+            await sendSosWithCoords(22.6105, 103.8012, true);
         }
     };
 
@@ -197,7 +269,7 @@ export default function SosButton() {
             {/* MODAL NHẬP THÔNG TIN (Hiện lên khi bấm nút) */}
             {isOpen && (
                 <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                    <div className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
                         {/* Nút tắt Modal */}
                         <button
                             onClick={() => setIsOpen(false)}
@@ -208,10 +280,16 @@ export default function SosButton() {
 
                         <h2 className="text-2xl font-black text-red-600 mb-2 text-center">BÁO ĐỘNG KHẨN CẤP</h2>
 
-                        {isLoggedIn ? (
+                        {isLoggedIn && isProfileComplete ? (
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                                 <p className="text-sm text-blue-800 font-medium text-center">
-                                    Hệ thống đã nhận diện được bạn. Thông tin gia đình và vị trí GPS sẽ tự động gửi đi.
+                                    Hệ thống đã nhận diện được bạn. Thông tin liên hệ và gia đình từ hồ sơ cá nhân sẽ được tự động gửi kèm ngầm.
+                                </p>
+                            </div>
+                        ) : isLoggedIn && !isProfileComplete ? (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                                <p className="text-sm text-amber-800 font-medium text-center">
+                                    Hồ sơ cá nhân chưa hoàn thiện. Vui lòng bổ sung Họ tên và Số điện thoại liên hệ dưới đây.
                                 </p>
                             </div>
                         ) : (
@@ -221,7 +299,7 @@ export default function SosButton() {
                         )}
 
                         <div className="space-y-4">
-                            {!isLoggedIn && (
+                            {!(isLoggedIn && isProfileComplete) && (
                                 <>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Họ và tên <span className="text-red-500">*</span></label>
@@ -285,7 +363,7 @@ export default function SosButton() {
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     placeholder="Ví dụ: Cần cano cứu hộ gấp, nước ngập ngang ngực..."
-                                    rows={isLoggedIn ? 4 : 2}
+                                    rows={isLoggedIn && isProfileComplete ? 4 : 2}
                                     className="w-full p-3 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                                 />
                             </div>

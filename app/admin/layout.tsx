@@ -51,7 +51,7 @@ export default function AdminLayout({
   // Loading state: Hiển thị khi đang kiểm tra quyền
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen w-full bg-slate-900">
+      <div className="flex h-dvh w-full items-center justify-center bg-slate-900">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mb-4"></div>
           <p className="text-white font-semibold">
@@ -68,7 +68,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-full bg-slate-50 overflow-hidden text-slate-900">
+    <div className="flex h-dvh min-h-0 w-full flex-col overflow-hidden bg-slate-50 text-slate-900 md:flex-row">
       {/* MOBILE HEADER */}
       <div className="md:hidden flex items-center justify-between bg-slate-900 text-white px-6 py-4 z-30 shadow-md">
         <Link href="/admin">
@@ -126,6 +126,9 @@ export default function AdminLayout({
           <Link href="/admin/users" className={navLinkClass}>
             Tài khoản & Role
           </Link>
+          <Link href="/admin/qr-login" className={navLinkClass}>
+            QR đăng nhập trải nghiệm
+          </Link>
           <Link href="/admin/buildings" className={navLinkClass}>
             Quản lý Nhà cửa
           </Link>
@@ -159,7 +162,13 @@ export default function AdminLayout({
       </aside>
 
       {/* MAIN CONTENT CONTAINER */}
-      <main className="flex-1 overflow-y-auto p-5 sm:p-8 md:p-10 bg-slate-50">
+      <main
+        className={`min-h-0 flex-1 bg-slate-50 ${
+          pathname === "/admin/routing"
+            ? "overflow-hidden p-0"
+            : "overflow-y-auto p-5 sm:p-8 md:p-10"
+        }`}
+      >
         {children}
       </main>
     </div>

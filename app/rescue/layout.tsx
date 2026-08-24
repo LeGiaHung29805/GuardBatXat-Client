@@ -36,7 +36,7 @@ export default function RescueLayout({
 
   if (!authorized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
+      <div className="flex min-h-dvh items-center justify-center bg-slate-950 text-slate-200">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
       </div>
     );

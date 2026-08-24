@@ -8,6 +8,7 @@ import 'leaflet/dist/leaflet.css';
 import ToastContainer, { showToast } from '@/components/ui/Toast';
 import { MapPin, Upload, Trash2, Compass, AlertTriangle, ListFilter, ClipboardList, CheckCircle2, Clock, XCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { IncidentReportResponse } from '@/lib/Model';
+import { getEffectiveLocation } from '@/lib/effectiveLocation';
 
 const BatXatBoundaryMap = dynamic(() => import('@/components/ui/BatXatBoundaryMap'), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(m => m.Marker), { ssr: false });
@@ -133,25 +134,28 @@ export default function CitizenIncidentReportPage() {
         }
     };
 
-    const detectGps = () => {
-        if (typeof navigator !== 'undefined' && "geolocation" in navigator) {
-            setDetectingGps(true);
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setForm(f => ({
-                        ...f,
-                        gpsLat: position.coords.latitude,
-                        gpsLng: position.coords.longitude
-                    }));
-                    setDetectingGps(false);
-                    showToast('info', 'ĐỊNH VỊ GPS THÀNH CÔNG', 'Đã lấy tọa độ vị trí hiện tại của bạn.');
-                },
-                (error) => {
-                    console.warn("Lỗi lấy GPS:", error.message);
-                    setDetectingGps(false);
-                },
-                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    const detectGps = async () => {
+        setDetectingGps(true);
+        try {
+            const location = await getEffectiveLocation({
+                enableHighAccuracy: true,
+                timeout: 8000,
+                maximumAge: 0,
+            });
+            setForm(f => ({
+                ...f,
+                gpsLat: location.lat,
+                gpsLng: location.lng
+            }));
+            showToast(
+                'info',
+                location.source === 'DEMO_HOME' ? 'VỊ TRÍ NHÀ TRÌNH DIỄN' : 'ĐỊNH VỊ GPS THÀNH CÔNG',
+                location.source === 'DEMO_HOME' ? 'Đã dùng tọa độ ngôi nhà được Admin gán.' : 'Đã lấy tọa độ vị trí hiện tại của bạn.'
             );
+        } catch (error: any) {
+            console.warn("Lỗi lấy vị trí:", error.message);
+        } finally {
+            setDetectingGps(false);
         }
     };
 
@@ -253,7 +257,7 @@ export default function CitizenIncidentReportPage() {
     };
 
     const renderFormAndHistory = () => (
-        <>
+        <div className="flex h-full min-h-0 flex-col">
             <div className="mb-4">
                 <h1 className="text-xl md:text-2xl font-black text-amber-500 mb-1 flex items-center gap-2">
                     <AlertTriangle className="w-6 h-6 text-amber-500 animate-pulse" />
@@ -294,7 +298,7 @@ export default function CitizenIncidentReportPage() {
 
             {activeTab === 'report' ? (
                 /* TAB 1: FORM GỬI BÁO CÁO 2 BƯỚC */
-                <div className="flex-1 flex flex-col justify-between overflow-y-auto">
+                <div className="flex min-h-0 flex-1 flex-col justify-between overflow-y-auto">
                     {/* Step indicator */}
                     <div className="flex items-center justify-between bg-slate-950/60 p-3 rounded-xl border border-slate-850 mb-4 shrink-0">
                         <div className="flex items-center gap-2">
@@ -480,7 +484,7 @@ export default function CitizenIncidentReportPage() {
                 </div>
             ) : (
                 /* TAB 2: LỊCH SỬ BÁO CÁO SỰ CỐ CỦA TÔI */
-                <div className="flex-1 flex flex-col overflow-y-auto">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
                     {!isLoggedIn ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800 rounded-2xl bg-slate-950/20">
                             <AlertTriangle className="w-8 h-8 text-slate-500 mb-2" />
@@ -494,7 +498,7 @@ export default function CitizenIncidentReportPage() {
                             Đang tải danh sách sự cố của bạn...
                         </div>
                     ) : myReports.length > 0 ? (
-                        <div className="flex-1 space-y-3 overflow-y-auto">
+                        <div className="space-y-3">
                             {myReports.map((report) => (
                                 <div
                                     key={report.id}
@@ -558,7 +562,7 @@ export default function CitizenIncidentReportPage() {
                     )}
                 </div>
             )}
-        </>
+        </div>
     );
 
     return (
@@ -566,7 +570,7 @@ export default function CitizenIncidentReportPage() {
             <ToastContainer />
 
             {/* Desktop: Sidebar trái cố định */}
-            <div className="hidden md:flex absolute top-0 left-0 h-full w-[500px] p-6 bg-slate-900/95 backdrop-blur border-r border-slate-800 z-10 flex-col overflow-y-auto shadow-2xl">
+            <div className="absolute top-0 left-0 z-10 hidden h-full min-h-0 w-[500px] flex-col overflow-hidden border-r border-slate-800 bg-slate-900/95 p-6 shadow-2xl backdrop-blur md:flex">
                 {renderFormAndHistory()}
             </div>
 
@@ -586,7 +590,7 @@ export default function CitizenIncidentReportPage() {
                     <div className="text-[9px] text-slate-500 font-semibold mt-0.5">Vuốt để kéo lên/xuống</div>
                 </div>
                 {panelHeight > 70 && (
-                    <div className="flex-1 overflow-y-auto px-4 pb-20">
+                    <div className="min-h-0 flex-1 overflow-hidden px-4 pb-20">
                         {renderFormAndHistory()}
                     </div>
                 )}

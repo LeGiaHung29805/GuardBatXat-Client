@@ -9,6 +9,7 @@ import 'leaflet/dist/leaflet.css';
 import websocket from '@/app/commander/utils/websocket';
 import ToastContainer, { showToast } from '@/components/ui/Toast';
 import { ShieldCheck, Siren, Waves, HelpCircle, Building2, MapPin, Eye, ChevronUp, ChevronDown } from 'lucide-react';
+import { getEffectiveLocation } from '@/lib/effectiveLocation';
 
 // Load Leaflet elements dynamically to avoid SSR errors
 const BatXatBoundaryMap = dynamic(() => import('@/components/ui/BatXatBoundaryMap'), { ssr: false });
@@ -118,25 +119,21 @@ export default function SafetyCheckPage() {
             setMarkerIcon(customIcon);
         });
 
-        // Fetch location GPS on start
-        if (typeof navigator !== 'undefined' && "geolocation" in navigator) {
-            setLoading(true);
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
+        // Fetch GPS thật hoặc vị trí ngôi nhà của phiên QR
+        setLoading(true);
+        void getEffectiveLocation({ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 })
+            .then((location) => {
                     if (isMounted) {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
+                        const lat = location.lat;
+                        const lng = location.lng;
                         setCurrentLoc({ lat, lng });
                         fetchSafetyAndNeighborhood(lat, lng, 0.0);
                     }
-                },
-                (error) => {
-                    console.warn("Lỗi lấy GPS tự động:", error.message);
+                })
+            .catch((error: Error) => {
+                    console.warn("Lỗi lấy vị trí tự động:", error.message);
                     if (isMounted) setLoading(false);
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
-        }
+                });
 
         return () => { isMounted = false; };
     }, []);
@@ -188,24 +185,14 @@ export default function SafetyCheckPage() {
         }
     };
 
-    const handleUseGPS = () => {
+    const handleUseGPS = async () => {
         setLoading(true);
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    setCurrentLoc({ lat, lng });
-                    fetchSafetyAndNeighborhood(lat, lng, simulatedWaterLevel);
-                },
-                () => {
-                    showToast('warning', 'LỖI GPS', 'Không thể lấy định vị GPS. Vui lòng cấp quyền vị trí trên trình duyệt.');
-                    setLoading(false);
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        } else {
-            showToast('danger', 'HỖ TRỢ GPS', 'Thiết bị hoặc trình duyệt không hỗ trợ định vị GPS.');
+        try {
+            const location = await getEffectiveLocation({ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+            setCurrentLoc({ lat: location.lat, lng: location.lng });
+            await fetchSafetyAndNeighborhood(location.lat, location.lng, simulatedWaterLevel);
+        } catch (error: any) {
+            showToast('warning', 'LỖI ĐỊNH VỊ', error.message || 'Không thể lấy vị trí.');
             setLoading(false);
         }
     };
@@ -243,7 +230,7 @@ export default function SafetyCheckPage() {
     };
 
     const renderLeftPanelContent = () => (
-        <>
+        <div className="flex h-full min-h-0 flex-col gap-4">
             <div>
                 <h1 className="text-xl md:text-2xl font-black text-emerald-400 flex items-center gap-2">
                     <ShieldCheck className="w-6 h-6 text-emerald-400" /> Tra Cứu An Toàn
@@ -317,7 +304,7 @@ export default function SafetyCheckPage() {
 
             {/* Kết quả phân tích tại điểm chính */}
             {result && !loading && (
-                <div className="animate-fade-in-up space-y-4 flex-1 overflow-y-auto">
+                <div className="min-h-0 flex-1 animate-fade-in-up space-y-4 overflow-y-auto">
                     <div className={`p-4 rounded-xl border shadow-lg transition-all ${
                         result.alertLevel === 'DANGER' 
                             ? 'bg-red-950/20 border-red-500/40 text-red-400' 
@@ -399,7 +386,7 @@ export default function SafetyCheckPage() {
                     </div>
                 </div>
             )}
-        </>
+        </div>
     );
 
     return (
@@ -407,7 +394,7 @@ export default function SafetyCheckPage() {
             <ToastContainer />
             
             {/* Desktop: Sidebar trái cố định */}
-            <div className="hidden md:flex absolute top-0 left-0 h-full w-[480px] p-6 bg-slate-900/95 backdrop-blur border-r border-slate-800 z-10 overflow-y-auto flex-col shrink-0 shadow-2xl space-y-4">
+            <div className="absolute top-0 left-0 z-10 hidden h-full min-h-0 w-[480px] shrink-0 flex-col overflow-hidden border-r border-slate-800 bg-slate-900/95 p-6 shadow-2xl backdrop-blur md:flex">
                 {renderLeftPanelContent()}
             </div>
 
@@ -427,7 +414,7 @@ export default function SafetyCheckPage() {
                     <div className="text-[9px] text-slate-500 font-semibold mt-0.5">Vuốt để kéo lên/xuống</div>
                 </div>
                 {panelHeight > 70 && (
-                    <div className="flex-1 overflow-y-auto px-4 pb-20 space-y-4">
+                    <div className="min-h-0 flex-1 overflow-hidden px-4 pb-20">
                         {renderLeftPanelContent()}
                     </div>
                 )}

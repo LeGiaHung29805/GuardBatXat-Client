@@ -15,7 +15,7 @@ export default function RootLayout({
     <html lang="vi" suppressHydrationWarning>
       <body className="bg-slate-950 text-slate-200">
         {/* Bộ khung chính của Website */}
-        <main className="relative min-h-screen">{children}</main>
+        <main className="relative min-h-dvh overflow-clip">{children}</main>
 
         {/* Nơi chứa nút Đăng nhập góc trên, Modal Đăng ký, và Nút SOS góc dưới */}
       </body>
