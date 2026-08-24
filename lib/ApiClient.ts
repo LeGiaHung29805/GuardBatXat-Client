@@ -17,6 +17,23 @@ import {
   IncidentStats,
 } from "./Model";
 
+export type AdminUserCreatePayload = {
+  username: string;
+  password: string;
+  fullName: string;
+  email: string | null;
+  phoneNumber: string;
+  roleName: string;
+  assignedStation: string | null;
+};
+
+export type AdminUserUpdatePayload = Omit<
+  AdminUserCreatePayload,
+  "username" | "password"
+> & {
+  password?: string;
+};
+
 // Gốc của API thiết lập về /api
 const API_BASE_URL =
   //process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
@@ -357,11 +374,11 @@ export const ApiClient = {
     const response = await axiosInstance.get("/admin/users");
     return response.data;
   },
-  createUser: async (userData: any) => {
+  createUser: async (userData: AdminUserCreatePayload) => {
     const response = await axiosInstance.post("/admin/users", userData);
     return response.data;
   },
-  updateUser: async (id: number, userData: any) => {
+  updateUser: async (id: number, userData: AdminUserUpdatePayload) => {
     const response = await axiosInstance.put(`/admin/users/${id}`, userData);
     return response.data;
   },

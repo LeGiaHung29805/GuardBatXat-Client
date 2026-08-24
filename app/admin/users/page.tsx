@@ -1,6 +1,10 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { ApiClient } from "@/lib/ApiClient";
+import {
+  AdminUserCreatePayload,
+  AdminUserUpdatePayload,
+  ApiClient,
+} from "@/lib/ApiClient";
 import {
   Plus,
   Edit,
@@ -131,17 +135,15 @@ export default function AdminUserPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const payload: any = {
-        ...formData,
-        assignedStation:
-          formData.assignedStation === "" ? null : formData.assignedStation,
-      };
-
       if (editingUserId) {
-        // LUỒNG SỬA (UPDATE)
-        if (!payload.password) delete payload.password; // Nếu không nhập mk mới thì ko gửi lên
-
-        // Bạn nhớ tạo hàm updateUser(id, payload) trong ApiClient nhé!
+        const payload: AdminUserUpdatePayload = {
+          password: formData.password || undefined,
+          fullName: formData.fullName,
+          email: formData.email || null,
+          phoneNumber: formData.phoneNumber,
+          roleName: formData.roleName,
+          assignedStation: formData.assignedStation || null,
+        };
         const res = await ApiClient.updateUser(editingUserId, payload);
         if (res.code === 200) {
           alert("Cập nhật thông tin thành công!");
@@ -151,7 +153,15 @@ export default function AdminUserPage() {
           alert(res.message || "Cập nhật thất bại.");
         }
       } else {
-        // LUỒNG THÊM MỚI (CREATE)
+        const payload: AdminUserCreatePayload = {
+          username: formData.username,
+          password: formData.password,
+          fullName: formData.fullName,
+          email: formData.email || null,
+          phoneNumber: formData.phoneNumber,
+          roleName: formData.roleName,
+          assignedStation: formData.assignedStation || null,
+        };
         const res = await ApiClient.createUser(payload);
         if (res.code === 200) {
           alert("Thêm người dùng thành công!");
