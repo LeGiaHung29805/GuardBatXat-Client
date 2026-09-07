@@ -13,6 +13,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect } from "react";
 import { findClosestIndex } from "@/lib/utils";
+import { ESRI_ATTRIBUTION, ESRI_IMAGERY_TILE_URL, ESRI_REFERENCE_TILE_URL } from "@/lib/mapTiles";
 
 // Icon Điểm A (Vị trí của bạn - Màu xanh dương)
 const startIcon = L.divIcon({
@@ -103,10 +104,10 @@ export default function SafeRouteMap({
       className="w-full h-full z-0 cursor-crosshair"
     >
       <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-        attribution="&copy; Esri"
+        url={ESRI_IMAGERY_TILE_URL}
+        attribution={ESRI_ATTRIBUTION}
       />
-      <TileLayer url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png" />
+      <TileLayer url={ESRI_REFERENCE_TILE_URL} attribution={ESRI_ATTRIBUTION} />
 
       <RouteController routeCoords={selectedRoutePoints} startNode={startLoc} />
       <ClickHandler setDestination={setDestLoc} />

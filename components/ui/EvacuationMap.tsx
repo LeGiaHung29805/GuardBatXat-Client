@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { ESRI_ATTRIBUTION, ESRI_IMAGERY_TILE_URL, ESRI_REFERENCE_TILE_URL } from '@/lib/mapTiles';
 
 type LatLngPoint = {
     lat: number;
@@ -253,12 +254,12 @@ export default function EvacuationMap({
                     mapMode={mapMode}
                 />
                 <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    attribution="&copy; Esri"
+                    url={ESRI_IMAGERY_TILE_URL}
+                    attribution={ESRI_ATTRIBUTION}
                 />
                 <TileLayer
-                    url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png"
-                    attribution="Tiles by Stamen"
+                    url={ESRI_REFERENCE_TILE_URL}
+                    attribution={ESRI_ATTRIBUTION}
                 />
 
                 {userLocation && (

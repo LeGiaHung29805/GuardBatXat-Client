@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { ShieldAlert } from "lucide-react";
+import { DARK_TILE_CLASS, OSM_ATTRIBUTION, OSM_TILE_URL } from "@/lib/mapTiles";
 
 interface Props {
   lat: number;
@@ -43,8 +44,9 @@ export default function IncidentMiniMap({ lat, lng, incidentType, impactLevel }:
     <div className="relative h-[250px] w-full rounded-xl overflow-hidden border border-gray-700 shadow-inner">
       <MapContainer center={center} zoom={15} className="h-full w-full z-0">
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution="&copy; OpenStreetMap"
+          url={OSM_TILE_URL}
+          attribution={OSM_ATTRIBUTION}
+          className={DARK_TILE_CLASS}
         />
         <MapController lat={lat} lng={lng} />
         

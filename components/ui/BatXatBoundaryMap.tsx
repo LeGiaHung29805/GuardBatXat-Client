@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState } from 'react';
 import L from 'leaflet';
+import { ESRI_ATTRIBUTION, ESRI_IMAGERY_TILE_URL, ESRI_REFERENCE_TILE_URL } from '@/lib/mapTiles';
 
 // 1. COMPONENT ĐIỀU KHIỂN BẢN ĐỒ (Zoom khít vào ranh giới khi vừa load)
 function MapBoundaryController({ boundaryData }: { boundaryData: any }) {
@@ -45,11 +46,11 @@ export default function BatXatBoundaryMap({ children }: { children?: React.React
         <MapContainer center={[22.6105, 103.8012]} zoom={11} className="w-full h-full z-0 cursor-crosshair">
             {/* Bản đồ vệ tinh Esri */}
             <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                attribution='&copy; Esri'
+                url={ESRI_IMAGERY_TILE_URL}
+                attribution={ESRI_ATTRIBUTION}
             />
             {/* Lớp Overlay tên đường */}
-            <TileLayer url="https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png" />
+            <TileLayer url={ESRI_REFERENCE_TILE_URL} attribution={ESRI_ATTRIBUTION} />
 
             {/* Gọi Component tự động điều khiển camera ban đầu */}
             <MapBoundaryController boundaryData={boundaryData} />

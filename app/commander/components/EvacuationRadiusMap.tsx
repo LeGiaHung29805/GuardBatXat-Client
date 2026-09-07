@@ -2,6 +2,7 @@
 import React from "react";
 import { MapContainer, TileLayer, Circle, CircleMarker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { DARK_TILE_CLASS, OSM_ATTRIBUTION, OSM_TILE_URL } from "@/lib/mapTiles";
 
 interface Props {
   center: [number, number];
@@ -14,8 +15,9 @@ export default function EvacuationRadiusMap({ center, radius, floodPoints }: Pro
     <div className="relative h-[420px] w-full rounded-xl overflow-hidden border border-gray-700 shadow-xl">
       <MapContainer center={center} zoom={13} className="h-full w-full">
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution="&copy; OpenStreetMap"
+          url={OSM_TILE_URL}
+          attribution={OSM_ATTRIBUTION}
+          className={DARK_TILE_CLASS}
         />
 
         {/* Vòng tròn bán kính sơ tán quanh tâm vùng ngập */}

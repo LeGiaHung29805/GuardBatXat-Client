@@ -128,3 +128,8 @@
     @apply font-sans;
   }
 }
+
+/* Keep public OSM tiles readable on dark dashboards without a keyed provider. */
+.map-tiles-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(1.25) saturate(0.45);
+}

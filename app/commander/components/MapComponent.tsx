@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import HeatmapLayer from "./HeatmapLayer";
 import { Flame, MapPin, Home, AlertTriangle, ShieldAlert } from "lucide-react"; // Import thư viện Icon
+import { DARK_TILE_CLASS, OSM_ATTRIBUTION, OSM_TILE_URL } from "@/lib/mapTiles";
 
 interface Props {
   floodPoints: any[];
@@ -100,8 +101,9 @@ export default function MapComponent({ floodPoints, landslidePoints, incidentRep
 
       <MapContainer center={center} zoom={12} className="h-full w-full">
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution="&copy; OpenStreetMap"
+          url={OSM_TILE_URL}
+          attribution={OSM_ATTRIBUTION}
+          className={DARK_TILE_CLASS}
         />
 
         {/* HIỂN THỊ LỚP BẢN ĐỒ DỰA VÀO NÚT BẤM */}

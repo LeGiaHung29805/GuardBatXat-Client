@@ -12,6 +12,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect } from "react";
+import { ESRI_ATTRIBUTION, ESRI_IMAGERY_TILE_URL, ESRI_REFERENCE_TILE_URL } from "@/lib/mapTiles";
 
 // --- INTERFACES ---
 interface Location {
@@ -104,10 +105,11 @@ export default function AdminCompareMap({
         className="w-full h-full cursor-crosshair"
       >
         {/* LỚP VỆ TINH */}
-        <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+        <TileLayer url={ESRI_IMAGERY_TILE_URL} attribution={ESRI_ATTRIBUTION} />
         {/* LỚP NHÃN ĐỊA DANH */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+          url={ESRI_REFERENCE_TILE_URL}
+          attribution={ESRI_ATTRIBUTION}
           opacity={0.8}
         />
 

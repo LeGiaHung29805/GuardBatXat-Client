@@ -8,6 +8,7 @@ import 'leaflet/dist/leaflet.css';
 
 import { HeatmapPoint, toHeatmapArray } from '@/lib/Model';
 import { ApiClient } from '@/lib/ApiClient';
+import { DARK_TILE_CLASS, OSM_ATTRIBUTION, OSM_TILE_URL } from '@/lib/mapTiles';
 
 // Tắt SSR cho Leaflet components
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
@@ -224,8 +225,9 @@ const RealtimeHeatmap = () => {
                 zoomControl={false}
             >
                 <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO'
+                    url={OSM_TILE_URL}
+                    attribution={OSM_ATTRIBUTION}
+                    className={DARK_TILE_CLASS}
                 />
 
                 {points.length > 0 && (

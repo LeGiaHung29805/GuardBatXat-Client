@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
+import { ESRI_ATTRIBUTION, ESRI_IMAGERY_TILE_URL, ESRI_REFERENCE_TILE_URL } from '@/lib/mapTiles';
 
 interface Props {
   startPos: [number, number];
@@ -187,14 +188,13 @@ export default function RescueMapWithRouting({
     // Zoom control góc phải dưới
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles © Esri',
+    L.tileLayer(ESRI_IMAGERY_TILE_URL, {
+      attribution: ESRI_ATTRIBUTION,
       maxZoom: 19,
     }).addTo(map);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap © CARTO',
-      subdomains: 'abcd',
+    L.tileLayer(ESRI_REFERENCE_TILE_URL, {
+      attribution: ESRI_ATTRIBUTION,
       maxZoom: 20,
       pane: 'overlayPane',
     }).addTo(map);
