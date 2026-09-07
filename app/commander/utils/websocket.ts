@@ -10,14 +10,15 @@ class WebSocketService {
 
   // Cơ chế mới: Quản lý các topic STOMP động
   private activeSubscriptions: Map<string, StompSubscription> = new Map();
-  private pendingSubscriptions: Map<string, MessageHandler> = new Map();
+  private subscriptionHandlers: Map<string, MessageHandler> = new Map();
 
   connect(token: string) {
-    const wsUrl = process.env.NEXT_PUBLIC_API_URL
-      ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '/ws-guardbatxat')
-      : "http://localhost:8080/ws-guardbatxat";
+    // GlobalUI và các trang nghiệp vụ dùng chung service này. Không thay client
+    // khi một kết nối đang active vì callback onConnect của client cũ có thể
+    // chạy sau đó và subscribe nhầm trên client mới chưa kết nối.
+    if (this.client?.active) return;
 
-    this.client = new Client({
+    const client = new Client({
       webSocketFactory: () => new SockJS(`${window.location.origin}/ws`),
       connectHeaders: {
         Authorization: `Bearer ${token}`
@@ -29,12 +30,17 @@ class WebSocketService {
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     });
+    this.client = client;
 
-    this.client.onConnect = (frame) => {
+    client.onConnect = () => {
+      if (this.client !== client) return;
+
       console.log("✅ Đã kết nối WebSocket (STOMP) thành công!");
+      // Subscription của kết nối cũ không còn hợp lệ sau reconnect.
+      this.activeSubscriptions.clear();
 
       // Đăng ký cứng kênh cũ để tương thích ngược
-      this.client?.subscribe('/topic/alerts', (message) => {
+      client.subscribe('/topic/alerts', (message) => {
         if (message.body) {
           try {
             const data = JSON.parse(message.body);
@@ -43,27 +49,31 @@ class WebSocketService {
         }
       });
 
-      // Đăng ký các topic đang chờ (do component gọi subscribe trước khi kết nối xong)
-      this.pendingSubscriptions.forEach((handler, destination) => {
-        this.doSubscribe(destination, handler);
+      // Khôi phục toàn bộ topic mong muốn, gồm cả topic được đăng ký trước
+      // khi kết nối xong và topic của kết nối trước khi reconnect.
+      this.subscriptionHandlers.forEach((handler, destination) => {
+        this.doSubscribe(destination, handler, client);
       });
-      this.pendingSubscriptions.clear();
     };
 
-    this.client.onStompError = (frame) => {
+    client.onStompError = (frame) => {
       console.error('❌ Lỗi kết nối STOMP: ' + frame.headers['message']);
     };
 
-    this.client.activate();
+    client.onWebSocketClose = () => {
+      if (this.client === client) {
+        this.activeSubscriptions.clear();
+      }
+    };
+
+    client.activate();
   }
 
   // --- CƠ CHẾ MỚI: DÀNH CHO CÁC TOPIC BẤT KỲ (NHƯ /topic/emergency) ---
   subscribe(destination: string, handler: MessageHandler) {
+    this.subscriptionHandlers.set(destination, handler);
     if (this.client && this.client.connected) {
       this.doSubscribe(destination, handler);
-    } else {
-      // Lưu lại chờ kết nối xong sẽ subscribe
-      this.pendingSubscriptions.set(destination, handler);
     }
   }
 
@@ -72,13 +82,21 @@ class WebSocketService {
       this.activeSubscriptions.get(destination)?.unsubscribe();
       this.activeSubscriptions.delete(destination);
     }
-    this.pendingSubscriptions.delete(destination);
+    this.subscriptionHandlers.delete(destination);
   }
 
-  private doSubscribe(destination: string, handler: MessageHandler) {
-    if (!this.client || this.activeSubscriptions.has(destination)) return;
+  private doSubscribe(
+    destination: string,
+    handler: MessageHandler,
+    client: Client | null = this.client,
+  ) {
+    if (
+      !client?.connected
+      || this.client !== client
+      || this.activeSubscriptions.has(destination)
+    ) return;
 
-    const subscription = this.client.subscribe(destination, (message) => {
+    const subscription = client.subscribe(destination, (message) => {
       if (message.body) {
         try {
           const data = JSON.parse(message.body);
@@ -128,12 +146,12 @@ class WebSocketService {
 
   disconnect() {
     if (this.client) {
-      this.client.deactivate();
+      void this.client.deactivate();
       this.client = null;
     }
     this.handlers.clear();
     this.activeSubscriptions.clear();
-    this.pendingSubscriptions.clear();
+    this.subscriptionHandlers.clear();
     console.log("🔌 Đã ngắt kết nối WebSocket");
   }
 }
