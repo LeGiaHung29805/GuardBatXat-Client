@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { ApiClient } from "@/lib/ApiClient";
 
@@ -16,6 +16,7 @@ export default function AdminLayout({
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Route Guard: Kiểm tra quyền ADMIN
   useEffect(() => {
@@ -42,11 +43,40 @@ export default function AdminLayout({
 
   // Tự động đóng sidebar di động khi chuyển trang
   useEffect(() => {
-    setIsSidebarOpen(false);
+    const animationFrame = window.requestAnimationFrame(() => {
+      setIsSidebarOpen(false);
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
   }, [pathname]);
 
   const navLinkClass =
     "block px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-semibold transition-all duration-200 hover:translate-x-2";
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    const token =
+      localStorage.getItem("jwt_token") || localStorage.getItem("token");
+
+    try {
+      if (token) {
+        await fetch("/api/v1/auth/logout", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch {
+      // Token cục bộ vẫn phải được xóa kể cả khi backend đang không phản hồi.
+    } finally {
+      localStorage.removeItem("jwt_token");
+      localStorage.removeItem("token");
+      localStorage.removeItem("sos:my_sos_id");
+      localStorage.removeItem("sos:my_phone");
+      window.location.replace("/auth");
+    }
+  };
 
   // Loading state: Hiển thị khi đang kiểm tra quyền
   if (isLoading) {
@@ -156,8 +186,19 @@ export default function AdminLayout({
             Kiểm chứng lộ trình
           </Link>
         </nav>
-        <div className="p-6 border-t border-slate-800 text-[10px] text-slate-500 text-center italic">
-          NCKH 2026
+        <div className="space-y-4 border-t border-slate-800 p-4">
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <LogOut size={18} />
+            {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+          </button>
+          <p className="text-center text-[10px] italic text-slate-500">
+            NCKH 2026
+          </p>
         </div>
       </aside>
 
